@@ -82,7 +82,10 @@ def animate(i):
         if candle.Open < candle.Close: rect.set_color(col1)
         else: rect.set_color(col2)
     ax.set_ylim(min(data_frame.Close), max(data_frame.Close))
+    print(min(data_frame.Close))
+    sleep(0.2)
     # fig.canvas.resize_event()
+    # fig.canvas.draw()
 
     return ax1.patches
     
