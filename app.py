@@ -48,18 +48,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas = Visualization(data)
         self.setCentralWidget(self.canvas)
 
-        # self.ani = animation.FuncAnimation(self.canvas.fig, self.animate, range(55), interval=0, blit=True)
-
         self.show()
-
-    def animate(self, i):
-        sleep(0.2)
-        n_data = 50
-        self.xdata = list(range(n_data))
-        self.ydata = [random.randint(0, 10) for i in range(n_data)]
-        print(len(self.xdata), len(self.ydata))
-        self.plot_ref[0].set_data(self.xdata, self.ydata)
-        return self.plot_ref
 
 
 app = QtWidgets.QApplication(sys.argv)
