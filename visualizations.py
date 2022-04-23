@@ -78,20 +78,20 @@ class Visualization(FigureCanvas):
     def _frame_idx_generator(self):
         while True:
             if self.frame_idx > self.max_frame_idx:
-                self.stop()
+                self.stop_sim()
                 yield self.max_frame_idx
             self.frame_idx += 1
             yield self.frame_idx
 
     
-    def update(self):
+    def update_sim(self):
         self.make_update = True
 
-    def stop(self):
+    def stop_sim(self):
         self.animation.event_source.stop()
         self.running = False
 
-    def start(self):
+    def start_sim(self):
         self.animation.event_source.start()
         self.running = True
 
