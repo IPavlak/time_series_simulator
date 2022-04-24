@@ -1,5 +1,7 @@
 import sys
 from time import sleep
+from typing import Any
+from unittest import runner
 
 import numpy as np
 import pandas as pd
@@ -7,6 +9,11 @@ import pandas as pd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
+
+# TODO: replace with Event objects
+def wait(f, interval=0.001):
+    while not f():
+        sleep(interval)
 
 
 class DataSourceInteraface:
@@ -36,7 +43,8 @@ class Visualization(FigureCanvas):
 
         # Control variables
         self.frame_idx = 0
-        self.max_frame_idx = 55
+        self.start_frame_idx = 0
+        self.end_frame_idx = 5
         self.make_update = False
         self.running = True
 
@@ -51,13 +59,12 @@ class Visualization(FigureCanvas):
         self.plot2_ref = self.axes.plot([], [])#self.data_frame.index, self.data_frame.Close)
 
         self.animation = animation.FuncAnimation(self.fig, self._animate, self._frame_idx_generator, interval=0, blit=True, repeat=False)
+        self.animation.event_source.stop()
+
 
     def _animate(self, i):
-        # while not self.make_update:
-        #     sleep(0.001)
-        sleep(0.2)
-
-        self.data_frame = self.data[i:i+self.frame_size]
+        self.data_frame = self.data[i : i+self.frame_size]
+        print(i)
         
         self._draw_candles(self.data_frame)
 
@@ -72,35 +79,48 @@ class Visualization(FigureCanvas):
         # self.axes.set_xlim(i, i+10)
         # self.fig.canvas.draw()
 
-        # self.make_update = False
+        self.make_update = False
         return self.bars_oc.patches + self.bars_hl.patches + self.plot2_ref
 
     def _frame_idx_generator(self):
         while True:
-            if self.frame_idx > self.max_frame_idx:
+            wait(lambda: self.make_update == True)
+            if self.frame_idx > self.end_frame_idx:
                 self.stop_sim()
-                yield self.max_frame_idx
-            self.frame_idx += 1
-            yield self.frame_idx
+                yield self.end_frame_idx
+            elif self.frame_idx < self.start_frame_idx:
+                self.stop_sim()
+                yield self.start_frame_idx
+            else:
+                yield self.frame_idx
 
     
-    def update_sim(self):
+    def update_frame_idx(self, idx):
+        if not self.running:
+            return False
+        wait(lambda: self.make_update == False)
+        self.frame_idx = idx
         self.make_update = True
+        return True
 
     def stop_sim(self):
         self.animation.event_source.stop()
         self.running = False
 
     def start_sim(self):
+        self.make_update = False
         self.animation.event_source.start()
         self.running = True
+
+    def is_running(self):
+        return self.running
 
     def set_start_idx(self, idx):
         if not self.running:
             self.frame_idx = idx
 
     def set_stop_idx(self, idx):
-        self.max_frame_idx = idx
+        self.end_frame_idx = idx
 
 
     def add_plot(self, data_source, **kwargs):

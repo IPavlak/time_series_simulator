@@ -1,5 +1,6 @@
 import sys
 from time import sleep
+import threading
 
 import numpy as np
 import pandas as pd
@@ -33,22 +34,45 @@ data = data.reset_index(drop=False)
 ########################################
 
 
-class MplCanvas(FigureCanvas):
-    def __init__(self):
-        self.fig = Figure() #figsize=(20,10), dpi=100
-        self.axes = self.fig.add_subplot(111)
-        super().__init__(self.fig)
-
-
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
         # self.canvas = MplCanvas()
-        self.canvas = Visualization(data)
-        self.setCentralWidget(self.canvas)
+        self.vis = Visualization(data)
+        self.setCentralWidget(self.vis)
+
+        myDataLoop = threading.Thread(name = 'myDataLoop', target = self.run, daemon = True, args=(self.vis.start_sim, self.vis.stop_sim))
+        myDataLoop.start()
 
         self.show()
+
+    def run(self, start_vis, stop_vis):
+        comm = Communicate()
+        comm.start_vis_signal.connect(start_vis)
+        comm.stop_vis_signal.connect(stop_vis)
+        
+        comm.start_vis_signal.emit()
+        for i in range(8):
+            self.vis.update_frame_idx(i)
+            sleep(0.5)
+        comm.start_vis_signal.emit()
+        for i in range(8):
+            self.vis.update_frame_idx(i)
+            sleep(0.5)
+        self.vis.stop_sim()
+
+''' End Class'''
+
+# You need to setup a signal slot mechanism, to
+# send data to your GUI in a thread-safe way.
+# Believe me, if you don't do this right, things
+# go very very wrong..
+class Communicate(QtCore.QObject):
+    start_vis_signal = QtCore.pyqtSignal()
+    stop_vis_signal = QtCore.pyqtSignal()
+
+''' End Class '''
 
 
 app = QtWidgets.QApplication(sys.argv)
