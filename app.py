@@ -38,12 +38,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        # self.canvas = MplCanvas()
+        # self.canvas = MplCanvas() -> maybe this is better, and I should send only Canvas to Visualization object ?
         self.vis = Visualization(data)
         self.setCentralWidget(self.vis)
 
-        myDataLoop = threading.Thread(name = 'myDataLoop', target = self.run, daemon = True, args=(self.vis.start_sim, self.vis.stop_sim))
-        myDataLoop.start()
+        # myDataLoop = threading.Thread(name = 'myDataLoop', target = self.run, daemon = True, args=(self.vis.start_sim, self.vis.stop_sim))
+        # myDataLoop.start()
+        self._run()
 
         self.show()
 
@@ -61,6 +62,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.vis.update_frame_idx(i)
             sleep(0.5)
         self.vis.stop_sim()
+
+    def _run(self):
+        # TODO: add test here
+        pass
 
 ''' End Class'''
 

@@ -59,10 +59,10 @@ class Visualization(FigureCanvas):
         self.plot2_ref = self.axes.plot([], [])#self.data_frame.index, self.data_frame.Close)
 
         self.animation = animation.FuncAnimation(self.fig, self._animate, self._frame_idx_generator, interval=0, blit=True, repeat=False)
-        self.animation.event_source.stop()
 
 
     def _animate(self, i):
+        # i should be last candle to plot
         self.data_frame = self.data[i : i+self.frame_size]
         print(i)
         
@@ -126,6 +126,9 @@ class Visualization(FigureCanvas):
     def add_plot(self, data_source, **kwargs):
         plot_ref, = self.axes.plot([], [], **kwargs)
         self.plots.append((plot_ref, data_source))
+
+    def set_data(self, data):
+        self.data = data
 
 
     
