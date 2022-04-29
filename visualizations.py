@@ -64,7 +64,7 @@ class Visualization(FigureCanvas):
     def _animate(self, i):
         # i should be last candle to plot
         self.data_frame = self.data[i : i+self.frame_size]
-        print(i)
+        # print(i)
         
         self._draw_candles(self.data_frame)
 
@@ -129,7 +129,6 @@ class Visualization(FigureCanvas):
 
     def set_data(self, data):
         self.data = data
-
 
     
     def _draw_candles(self, data_frame):

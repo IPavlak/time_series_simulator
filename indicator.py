@@ -1,5 +1,6 @@
 from tokenize import Number
-from typing import Any, Callable, Dict, List
+from typing import Any, Dict, List, Callable
+from numbers import Number
 import numpy as np
 import pandas as pd
 
