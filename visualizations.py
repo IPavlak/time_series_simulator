@@ -1,7 +1,4 @@
-import sys
 from time import sleep
-from typing import Any
-from unittest import runner
 
 import numpy as np
 import pandas as pd
@@ -9,6 +6,8 @@ import pandas as pd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
+
+from animation_handler import *
 
 # TODO: replace with Event objects
 def wait(f, interval=0.001):
@@ -42,7 +41,7 @@ class Visualization(FigureCanvas):
         self.frame_size = 10  # TODO: depends on window size
 
         # Control variables
-        self.frame_idx = 0
+        self.frame_idx = 0 #last frame idx
         self.start_frame_idx = 0
         self.end_frame_idx = 5
         self.make_update = False
@@ -52,19 +51,20 @@ class Visualization(FigureCanvas):
         self.plots = []
         
         # self.plot_ref = self.axes.plot(self.data.index, self.data.Close)
-        self.bars_oc = self.axes.bar(self.data_frame.index, self.data_frame.Close-self.data_frame.Open, self.width_oc, \
-                                     bottom=self.data_frame.Open, color=self.color_up)
-        self.bars_hl = self.axes.bar(self.data_frame.index, self.data_frame.High-self.data_frame.Low, self.width_hl, \
-                                     bottom=self.data_frame.Low, color=self.color_up)
+        self.bars_oc = self.axes.bar([], [], self.width_oc, \
+                                     bottom=[], color=self.color_up)
+        self.bars_hl = self.axes.bar([], [], self.width_hl, \
+                                     bottom=[], color=self.color_up)
         self.plot2_ref = self.axes.plot([], [])#self.data_frame.index, self.data_frame.Close)
 
-        self.animation = animation.FuncAnimation(self.fig, self._animate, self._frame_idx_generator, interval=0, blit=True, repeat=False)
+        # self.animation = animation.FuncAnimation(self.fig, self._animate, self._frame_idx_generator, interval=0, blit=True, repeat=False)
+        self.animation = AnimationHandler(self.fig, self._animate, init_func=self._init_draw)
 
 
     def _animate(self, i):
-        # i should be last candle to plot
+        self.frame_idx = i
+        # TODO: i should be last candle to plot
         self.data_frame = self.data[i : i+self.frame_size]
-        # print(i)
         
         self._draw_candles(self.data_frame)
 
@@ -80,28 +80,30 @@ class Visualization(FigureCanvas):
         # self.fig.canvas.draw()
 
         self.make_update = False
+        print("draw_func", i, self.bars_hl.patches[0]._animated)
         return self.bars_oc.patches + self.bars_hl.patches + self.plot2_ref
 
-    def _frame_idx_generator(self):
-        while True:
-            wait(lambda: self.make_update == True)
-            if self.frame_idx > self.end_frame_idx:
-                self.stop_sim()
-                yield self.end_frame_idx
-            elif self.frame_idx < self.start_frame_idx:
-                self.stop_sim()
-                yield self.start_frame_idx
-            else:
-                yield self.frame_idx
+    def _init_draw(self):
+        print("_init_func", self.data_frame.Date.iloc[0], self.data_frame.Open.iloc[2] < self.data_frame.Close.iloc[2])
 
-    
-    def update_frame_idx(self, idx):
-        if not self.running:
-            return False
-        wait(lambda: self.make_update == False)
-        self.frame_idx = idx
-        self.make_update = True
-        return True
+        self.axes.cla()
+        self.bars_oc = self.axes.bar(self.data_frame.index, self.data_frame.Close-self.data_frame.Open, self.width_oc, \
+                                     bottom=self.data_frame.Open, color=self.color_up)
+        self.bars_hl = self.axes.bar(self.data_frame.index, self.data_frame.High-self.data_frame.Low, self.width_hl, \
+                                     bottom=self.data_frame.Low, color=self.color_up)
+
+        for rect, candle in zip(self.bars_oc, self.data_frame.iloc):
+            if candle.Open < candle.Close: rect.set_color(self.color_up)
+            else: rect.set_color(self.color_down)
+        
+        for rect, candle in zip(self.bars_hl, self.data_frame.iloc):
+            if candle.Open < candle.Close: rect.set_color(self.color_up)
+            else: rect.set_color(self.color_down)
+
+        self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
+        
+        return self.bars_oc.patches + self.bars_hl.patches
+
 
     def stop_sim(self):
         self.animation.event_source.stop()

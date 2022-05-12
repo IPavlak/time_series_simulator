@@ -4,15 +4,12 @@ from time import time, sleep
 from indicator import SystemIndicator
 from visualizations import Visualization
 
-# class VisualizationControls:
-#     start_vis = None
-#     stop_vis = None
 
 class Simulator:
-    def __init__(self, visualization, interval = 0):
+    def __init__(self, communication, visualization, interval = 0):
         self.interval = interval
         self.vis = visualization
-        # self.vis_control = vis_control
+        self.comm = communication
         self.running = False
         self.control_event = threading.Event()
 
@@ -25,11 +22,6 @@ class Simulator:
 
         self.sim_thread = threading.Thread(name = 'myDataLoop', target = self.run, daemon = True)
         self.sim_thread.start()
-
-        # Communication to main thread
-        # self.comm = Communicate()
-        # self.comm.start_vis_signal.connect(self.vis_control.start_vis)
-        # self.comm.stop_vis_signal.connect(self.vis_control.stop_vis)
 
 
     def start(self):
@@ -94,6 +86,9 @@ class Simulator:
         self.vis.add_plot(indicator)
 
     def run(self):
+        frame_vis_event = threading.Event()
+        frame_vis_event.set()
+
         while True:
             start_time = time()
             self.control_event.wait()
@@ -104,13 +99,13 @@ class Simulator:
                 indicator.calculate(self.data_idx)
 
             # draw frame
-            self.vis.update_frame_idx(self.data_idx)
+            frame_vis_event.wait()
+            self.comm.update_vis_signal.emit(frame_vis_event, self.data_idx) # emit signal
 
             self.data_idx += 1
             sleep( max(0.0, self.interval-(time()-start_time) ) )
 
             if self.data_idx >= min(self.data.shape[0], self.stop_idx()+1):
-                # TODO: this cannot be called from thread
                 self.stop()
             
 
