@@ -91,8 +91,12 @@ class Simulator:
 
         while True:
             start_time = time()
+
+            # sleep if visualization event source is not running
+            while not self.vis.animation.event_source.is_running():
+                sleep( max(0.05, self.interval) )
+
             self.control_event.wait()
-            print(self.data_idx)
 
             # indicators update
             for indicator in self.indicators:
@@ -100,6 +104,8 @@ class Simulator:
 
             # draw frame
             frame_vis_event.wait()
+            print(self.data_idx)
+            frame_vis_event.clear()
             self.comm.update_vis_signal.emit(frame_vis_event, self.data_idx) # emit signal
 
             self.data_idx += 1

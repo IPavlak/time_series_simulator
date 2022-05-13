@@ -9,11 +9,6 @@ import matplotlib.animation as animation
 
 from animation_handler import *
 
-# TODO: replace with Event objects
-def wait(f, interval=0.001):
-    while not f():
-        sleep(interval)
-
 
 class DataSourceInteraface:
     def get_latest_data(self, n: int) -> list:
@@ -63,8 +58,7 @@ class Visualization(FigureCanvas):
 
     def _animate(self, i):
         self.frame_idx = i
-        # TODO: i should be last candle to plot
-        self.data_frame = self.data[i : i+self.frame_size]
+        self.data_frame = self.data[i-self.frame_size+1:i+1]
         
         self._draw_candles(self.data_frame)
 

@@ -19,17 +19,20 @@ class EventSource:
     def stop(self):
         self.running = False
 
+    def is_running(self):
+        return self.running
+
     def call(self, done_event, *args):
+        print("callback", *args)
         if self.running and self.func is not None:
-            done_event.clear()
             self.func(*args)
             done_event.set()
 
+        if not self.running:
+            print("[EventSource] Trying to run callback while not running, "
+                  "call start() to start event source")
         if self.func is None:
             raise RuntimeError("[EventSource] Callback was not set")
-        if not self.running:
-            raise RuntimeError("[EventSource] Trying to run callback while not running, "
-                               "call start() to start event source")
 
     
 class AnimationHandler(animation.Animation):
@@ -64,13 +67,12 @@ class AnimationHandler(animation.Animation):
         '''
         # clear background to start blitting if not clean already
         if not self._clean_bg:
-            print("cleaning bg", len(self._drawn_artists))
+            print("cleaning bg", framedata)
+            self._clean_bg = True
             for a in self._drawn_artists:
                 a.set_animated(True)
             self._fig.canvas.draw_idle()
             self._fig.canvas.flush_events() # enforcing to draw whole frame right now before blitting
-            # sleep(5.04) # enforcing to draw whole frame right now before blitting
-            self._clean_bg = True
 
         self._drawn_artists = self._func(framedata)
 
