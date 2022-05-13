@@ -37,8 +37,6 @@ class Visualization(FigureCanvas):
 
         # Control variables
         self.frame_idx = 0 #last frame idx
-        self.start_frame_idx = 0
-        self.end_frame_idx = 5
         self.make_update = False
         self.running = True
 
@@ -110,13 +108,6 @@ class Visualization(FigureCanvas):
 
     def is_running(self):
         return self.running
-
-    def set_start_idx(self, idx):
-        if not self.running:
-            self.frame_idx = idx
-
-    def set_stop_idx(self, idx):
-        self.end_frame_idx = idx
 
 
     def add_plot(self, data_source, **kwargs):

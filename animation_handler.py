@@ -39,8 +39,6 @@ class AnimationHandler(animation.Animation):
     def __init__(self, fig, func, init_func=None, blit=True):
         self._func = func
         self._init_func = init_func
-        # self.blit = blit
-        # self.event_source = EventSource()
 
         animation.Animation.__init__(self, fig, event_source=EventSource(), blit=blit)
 
