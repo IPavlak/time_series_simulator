@@ -22,6 +22,7 @@ class EventSource:
     def is_running(self):
         return self.running
 
+    # TODO: instead of *args use struct FrameData
     def call(self, done_event, *args):
         print("callback", *args)
         if self.running and self.func is not None:

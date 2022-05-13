@@ -11,8 +11,8 @@ from animation_handler import *
 
 
 class DataSourceInteraface:
-    def get_latest_data(self, n: int) -> list:
-        """Get latest data """
+    def get_data(self, idx_from: int, idx_to: int) -> list:
+        """Get data """
 
 
 
@@ -36,7 +36,7 @@ class Visualization(FigureCanvas):
         self.frame_size = 10  # TODO: depends on window size
 
         # Control variables
-        self.frame_idx = 0 #last frame idx
+        self.frame_idx = 9 #last frame idx
         self.make_update = False
         self.running = True
 
@@ -48,7 +48,6 @@ class Visualization(FigureCanvas):
                                      bottom=[], color=self.color_up)
         self.bars_hl = self.axes.bar([], [], self.width_hl, \
                                      bottom=[], color=self.color_up)
-        self.plot2_ref = self.axes.plot([], [])#self.data_frame.index, self.data_frame.Close)
 
         # self.animation = animation.FuncAnimation(self.fig, self._animate, self._frame_idx_generator, interval=0, blit=True, repeat=False)
         self.animation = AnimationHandler(self.fig, self._animate, init_func=self._init_draw)
@@ -61,10 +60,10 @@ class Visualization(FigureCanvas):
         self._draw_candles(self.data_frame)
 
         # User defined plots
+        user_plot_artists = []
         for plot, data_source in self.plots:
-            plot.set_data(np.linspace(0,9,10), data_source.get_data(10))
-
-        self.plot2_ref[0].set_data(np.linspace(0,9,10), self.data_frame.Close) # NaN for not existing values
+            plot.set_data(np.linspace(0,9,10), data_source.get_data(self.frame_idx-self.frame_size+1, self.frame_idx)) # NaN for not existing values
+            user_plot_artists.append(plot)
 
         # draw periodically to update y-labels and x-labels
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
@@ -72,8 +71,8 @@ class Visualization(FigureCanvas):
         # self.fig.canvas.draw()
 
         self.make_update = False
-        print("draw_func", i, self.bars_hl.patches[0]._animated)
-        return self.bars_oc.patches + self.bars_hl.patches + self.plot2_ref
+        print("draw_func", i, user_plot_artists[0]._animated)
+        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists 
 
     def _init_draw(self):
         print("_init_func", self.data_frame.Date.iloc[0], self.data_frame.Open.iloc[2] < self.data_frame.Close.iloc[2])
@@ -92,9 +91,16 @@ class Visualization(FigureCanvas):
             if candle.Open < candle.Close: rect.set_color(self.color_up)
             else: rect.set_color(self.color_down)
 
+        # User defined plots
+        user_plot_artists = []
+        for i in range(len(self.plots)):
+            plot_ref, = self.axes.plot(self.data_frame.index, self.plots[i][1].get_data(self.frame_idx-self.frame_size+1, self.frame_idx))
+            self.plots[i] = (plot_ref, self.plots[i][1])
+            user_plot_artists.append(plot_ref)
+
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
-        
-        return self.bars_oc.patches + self.bars_hl.patches
+
+        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists
 
 
     def stop_sim(self):

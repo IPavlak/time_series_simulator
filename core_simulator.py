@@ -16,6 +16,7 @@ class Simulator:
         self.data = None
         self.start_time = None
         self.stop_time = None
+        # TODO: FrameData
         self.data_idx = 0
 
         self.indicators = []
@@ -86,6 +87,8 @@ class Simulator:
     def run(self):
         frame_vis_event = threading.Event()
         frame_vis_event.set()
+
+        sleep(1.0) # wait for initialization to finish
 
         while True:
             start_time = time()

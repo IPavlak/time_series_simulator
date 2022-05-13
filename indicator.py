@@ -30,7 +30,7 @@ class SystemIndicator(DataSourceInteraface):
 
     def set_input_data(self, input_data):
         self.input_data = input_data
-        self.data = np.zeros((len(input_data), 1)).tolist()
+        self.data = np.zeros((len(input_data), 1))
         self.data[:] = np.NaN
 
     def reset_last_data(self, idx):
@@ -38,7 +38,8 @@ class SystemIndicator(DataSourceInteraface):
             self.data[i] = np.NaN
 
 
-    def calculate(self, idx):
+    # TODO: FrameData
+    def calculate(self, idx, curr_candle=None):
         if not self.parameters.get(ParamNames.PERSIST, True):
             self.reset_last_data(idx-1)
         input_data = self.input_data.iloc[0:idx+1]
@@ -52,6 +53,6 @@ class SystemIndicator(DataSourceInteraface):
         self.last_data_size = len(output_data)
 
 
-    def get_latest_data(self, n: int) -> list:
+    def get_data(self, start: int, end: int) -> list:
         ''' Overloaded interface function '''
-        return self.data[len(self.data)-n : len(self.data)]
+        return self.data[start : end+1]
