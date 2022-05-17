@@ -5,7 +5,7 @@ import pandas as pd
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import matplotlib.animation as animation
+from matplotlib.ticker import Formatter
 
 from animation_handler import *
 
@@ -14,6 +14,18 @@ class DataSourceInteraface:
     def get_data(self, idx_from: int, idx_to: int) -> list:
         """Get data """
 
+
+class MyFormatter(Formatter):
+    def __init__(self, dates, fmt='%Y-%m-%d'):
+        self.dates = dates
+        self.fmt = fmt
+
+    def __call__(self, x, pos=0):
+        """Return the label for time x at position pos."""
+        ind = int(round(x))
+        if ind >= len(self.dates) or ind < 0:
+            return ''
+        return self.dates[ind].strftime(self.fmt)
 
 
 class Visualization(FigureCanvas):
@@ -29,6 +41,13 @@ class Visualization(FigureCanvas):
         # define colors to use
         self.color_up = 'green'
         self.color_down = 'red'
+
+        # define x,y margins
+        self.x_margin = self.width_oc
+        self.y_margin = 0.1
+
+        # define how often to show x label - i.e. 4 means every fourth candle will have x label
+        self.x_tick_rate = 4
 
         # Data
         self.data = data
@@ -62,12 +81,12 @@ class Visualization(FigureCanvas):
         # User defined plots
         user_plot_artists = []
         for plot, data_source in self.plots:
-            plot.set_data(np.linspace(0,9,10), data_source.get_data(self.frame_idx-self.frame_size+1, self.frame_idx)) # NaN for not existing values
+            plot.set_data(self.data_frame.index, data_source.get_data(self.frame_idx-self.frame_size+1, self.frame_idx)) # NaN for not existing values
             user_plot_artists.append(plot)
 
         # draw periodically to update y-labels and x-labels
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
-        # self.axes.set_xlim(i, i+10)
+        self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
         # self.fig.canvas.draw()
 
         self.make_update = False
@@ -78,6 +97,9 @@ class Visualization(FigureCanvas):
         print("_init_func", self.data_frame.Date.iloc[0], self.data_frame.Open.iloc[2] < self.data_frame.Close.iloc[2])
 
         self.axes.cla()
+        self._setup_x_labels()
+        # self._setup_mouse_coord_label()
+
         self.bars_oc = self.axes.bar(self.data_frame.index, self.data_frame.Close-self.data_frame.Open, self.width_oc, \
                                      bottom=self.data_frame.Open, color=self.color_up)
         self.bars_hl = self.axes.bar(self.data_frame.index, self.data_frame.High-self.data_frame.Low, self.width_hl, \
@@ -123,6 +145,13 @@ class Visualization(FigureCanvas):
     def set_data(self, data):
         self.data = data
 
+
+    def _setup_x_labels(self):
+        self.axes.xaxis.set_major_formatter(MyFormatter(self.data['Date'], '%Y-%m-%d %H:%M')) # TODO: initialize formatter only once
+        locs = range(self.data_frame.index[0], self.data_frame.index[-1]+1, self.x_tick_rate)
+        self.axes.set_xticks(locs)
+        # format x-axis dates
+        self.fig.autofmt_xdate(bottom=0.1, rotation=0, ha='center')
     
     def _draw_candles(self, data_frame):
         for rect, candle in zip(self.bars_oc, data_frame.iloc):
@@ -136,6 +165,10 @@ class Visualization(FigureCanvas):
             rect.set_y( min(candle.Low, candle.High) )
             if candle.Open < candle.Close: rect.set_color(self.color_up)
             else: rect.set_color(self.color_down)
+
+        for i in range(len(data_frame.index)):
+            self.bars_oc.patches[i].set_x(data_frame.index[i] - self.width_oc/2)
+            self.bars_hl.patches[i].set_x(data_frame.index[i] - self.width_hl/2)
         
 
 if __name__ == '__main__':

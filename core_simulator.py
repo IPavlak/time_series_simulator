@@ -110,6 +110,7 @@ class Simulator:
             self.comm.update_vis_signal.emit(frame_vis_event, self.data_idx) # emit signal
 
             self.data_idx += 1
+            # print("loop time", time()-start_time)
             sleep( max(0.0, self.interval-(time()-start_time) ) )
 
             if self.data_idx >= self.data.shape[0] or self.data.loc[self.data_idx].Date >= self.stop_time:

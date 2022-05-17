@@ -70,7 +70,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # print(i)
             # self.vis.update_frame_idx(i)
             frame_vis_event.wait()
-            self.comm.update_vis_signal.emit(frame_vis_event, i)
+            self.comm.update_vis_signal.emit(frame_vis_event, i+10)
             sleep(0.05) #TODO: check for 0.01 error
         # comm.start_vis_signal.emit()
         # for i in range(8):
