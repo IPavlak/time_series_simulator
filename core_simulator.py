@@ -1,11 +1,14 @@
 import threading
 from time import time, sleep
+from copy import deepcopy
 
 from indicator import SystemIndicator
 from visualizations import Visualization
+from frame_data import *
 
 
 class Simulator:
+    # TODO: remove interval from init arguments
     def __init__(self, communication, visualization, interval = 0):
         self.interval = interval
         self.vis = visualization
@@ -18,8 +21,7 @@ class Simulator:
         self.stop_time = None
         self.use_ticks = False
         self.is_input_valid = False
-        # TODO: FrameData
-        self.data_idx = 0
+        self.frame_data = FrameData()
 
         self.indicators = []
 
@@ -34,7 +36,7 @@ class Simulator:
             print('[Simulator] Simulator cannot start, already running')
         else:
             self.vis.start_sim()
-            self.data_idx = self.start_idx()
+            self.frame_data.idx = self.start_idx()
             self.running = True
             self.control_event.set()
 
@@ -75,7 +77,6 @@ class Simulator:
 
     def _set_data(self, data):
         self.data = data
-        self.data_idx = 0
         self.vis.set_data(data)
         for indicator in self.indicators:
             indicator.set_input_data(data)
@@ -118,19 +119,19 @@ class Simulator:
 
             # indicators update
             for indicator in self.indicators:
-                indicator.calculate(self.data_idx)
+                indicator.calculate(self.frame_data)
 
             # draw frame
             frame_vis_event.wait()
-            print(self.data_idx)
+            print(self.frame_data.idx)
             frame_vis_event.clear()
-            self.comm.update_vis_signal.emit(frame_vis_event, self.data_idx) # emit signal
+            self.comm.update_vis_signal.emit(frame_vis_event, deepcopy(self.frame_data)) # emit signal # TODO: make note about important paradigm when sending parameters in other threads
 
-            self.data_idx += 1
+            self.frame_data.idx += 1
             # print("loop time", time()-start_time)
             sleep( max(0.0, self.interval-(time()-start_time) ) )
 
-            if self.data_idx >= self.data.shape[0] or self.data.loc[self.data_idx].Date >= self.stop_time:
+            if self.frame_data.idx >= self.data.shape[0] or self.data.loc[self.frame_data.idx].Date >= self.stop_time:
                 self.stop()
             
 

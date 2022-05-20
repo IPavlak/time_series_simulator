@@ -38,17 +38,16 @@ class SystemIndicator(DataSourceInteraface):
             self.data[i] = np.NaN
 
 
-    # TODO: FrameData
-    def calculate(self, idx, curr_candle=None):
+    def calculate(self, framedata):
         if not self.parameters.get(ParamNames.PERSIST, True):
-            self.reset_last_data(idx-1)
-        input_data = self.input_data.iloc[0:idx+1]
+            self.reset_last_data(framedata.idx-1)
+        input_data = self.input_data.iloc[0:framedata.idx+1]
         # reverse order - first in list is latest data
         input_data = input_data.iloc[::-1]
         
         output_data = self.on_calculate(input_data)
         for i in range(len(output_data)):
-            self.data[idx-i] = output_data[i]
+            self.data[framedata.idx-i] = output_data[i]
         
         self.last_data_size = len(output_data)
 

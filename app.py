@@ -93,7 +93,7 @@ class MainWindow(QtWidgets.QMainWindow):
 # Believe me, if you don't do this right, things
 # go very very wrong..
 class Communicate(QtCore.QObject):
-    update_vis_signal = QtCore.pyqtSignal(threading.Event, int)
+    update_vis_signal = QtCore.pyqtSignal(threading.Event, FrameData)
 
 ''' End Class '''
 

@@ -1,6 +1,4 @@
 import matplotlib.animation as animation
-from time import sleep
-import threading
 
 class EventSource:
     def __init__(self):
@@ -22,9 +20,8 @@ class EventSource:
     def is_running(self):
         return self.running
 
-    # TODO: instead of *args use struct FrameData
     def call(self, done_event, *args):
-        print("callback", *args)
+        print("callback", args[0].idx)
         if self.running and self.func is not None:
             self.func(*args)
             done_event.set()
