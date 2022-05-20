@@ -72,9 +72,9 @@ class Visualization(FigureCanvas):
         self.animation = AnimationHandler(self.fig, self._animate, init_func=self._init_draw)
 
 
-    def _animate(self, i):
-        self.frame_idx = i
-        self.data_frame = self.data[i-self.frame_size+1:i+1]
+    def _animate(self, framedata):
+        self.frame_idx = framedata.idx
+        self.data_frame = self.data[framedata.idx-self.frame_size+1:framedata.idx+1]
         
         self._draw_candles(self.data_frame)
 
@@ -90,7 +90,7 @@ class Visualization(FigureCanvas):
         # self.fig.canvas.draw()
 
         self.make_update = False
-        print("draw_func", i, user_plot_artists[0]._animated)
+        print("draw_func", framedata.idx, user_plot_artists[0]._animated)
         return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists 
 
     def _init_draw(self):
