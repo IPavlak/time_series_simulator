@@ -1,5 +1,6 @@
 import threading
 from time import time, sleep
+from copy import deepcopy
 
 from indicator import SystemIndicator
 from visualizations import Visualization
@@ -124,7 +125,7 @@ class Simulator:
             frame_vis_event.wait()
             print(self.frame_data.idx)
             frame_vis_event.clear()
-            self.comm.update_vis_signal.emit(frame_vis_event, self.frame_data) # emit signal
+            self.comm.update_vis_signal.emit(frame_vis_event, deepcopy(self.frame_data)) # emit signal # TODO: make note about important paradigm when sending parameters in other threads
 
             self.frame_data.idx += 1
             # print("loop time", time()-start_time)
