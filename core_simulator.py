@@ -16,6 +16,8 @@ class Simulator:
         self.data = None
         self.start_time = None
         self.stop_time = None
+        self.use_ticks = False
+        self.is_input_valid = False
         # TODO: FrameData
         self.data_idx = 0
 
@@ -26,13 +28,10 @@ class Simulator:
 
 
     def start(self):
-        # All checks
-        if self.start_time is None:
-            print('[Simulator] Cannot start without start time')
-        elif self.stop_time is None:
-            print('[Simulator] Cannot start without stop time')
-        elif self.data is None:
-            print("[Simulator] Cannot start the simulation without data")
+        if not self.is_input_valid:
+            print('[Simulator] Simulator cannot start, input parameters are invalid')
+        elif self.running:
+            print('[Simulator] Simulator cannot start, already running')
         else:
             self.vis.start_sim()
             self.data_idx = self.start_idx()
@@ -47,14 +46,32 @@ class Simulator:
     def pause(self):
         self.control_event.clear()
 
-    def set_interval(self, interval):
+    def setup_simulator(self, data, start_time, stop_time, interval, use_ticks, tick_data=None):
+        # All input checks
+        self.is_input_valid = False
+        if data is None or start_time is None or stop_time is None or use_ticks is None:
+            print('[Simulator] Missing some input parameters')
+        elif start_time >= stop_time:
+            print('[Simulator] Start or stop time is invalid')
+        elif interval < 0:
+            print('[Simulator] Interval parameter is not a positive number')
+        elif use_ticks and tick_data is None:
+            print('[Simulator] Missing tick data')
+        else:
+            self._set_data(data)
+            self._set_start_time(start_time)
+            self._set_stop_time(stop_time)
+            self._set_interval(interval)
+            self.use_ticks = use_ticks
+            self._set_tick_data = tick_data
+
+            self.is_input_valid = True
+
+    def _set_interval(self, interval):
         self.interval = interval
 
-    def set_data(self, data):
-        if not self.running:
-            self._set_data(data)
-        else:
-            print("[Simulator] Cannot set new data frame while running")
+    def _set_tick_data(self, data):
+        self.tick_data = data
 
     def _set_data(self, data):
         self.data = data
@@ -63,11 +80,11 @@ class Simulator:
         for indicator in self.indicators:
             indicator.set_input_data(data)
 
-    def set_start_time(self, time):
+    def _set_start_time(self, time):
         ''' Time should have format yyyy-m[m]-d[d] hh:MM  - or pandas value '''
         self.start_time = time
 
-    def set_stop_time(self, time):
+    def _set_stop_time(self, time):
         ''' Time should have format yyyy-m[m]-d[d] hh:MM  - or pandas value '''
         self.stop_time = time
 
