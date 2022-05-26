@@ -12,8 +12,8 @@ from utils import *
 
 
 class DataSourceInteraface:
-    def get_data(self, idx_from: int, idx_to: int) -> list:
-        """Get data """
+    def get_data(self, time, n: int) -> list:
+        """ Get data which corresponds to time and (n-1) previous data samples (n data samples in total) """
 
 
 class MyFormatter(Formatter):
@@ -82,7 +82,7 @@ class Visualization(FigureCanvas):
         # User defined plots
         user_plot_artists = []
         for plot, data_source in self.plots:
-            plot.set_data(self.data_frame.index, data_source.get_data(self.frame_idx-self.frame_size+1, self.frame_idx)) # NaN for not existing values
+            plot.set_data(self.data_frame.index, data_source.get_data(self.data.Date[self.frame_idx], self.frame_size)) # NaN for not existing values
             user_plot_artists.append(plot)
 
         # draw periodically to update y-labels and x-labels
@@ -117,7 +117,7 @@ class Visualization(FigureCanvas):
         # User defined plots
         user_plot_artists = []
         for i in range(len(self.plots)):
-            plot_ref, = self.axes.plot(self.data_frame.index, self.plots[i][1].get_data(self.frame_idx-self.frame_size+1, self.frame_idx))
+            plot_ref, = self.axes.plot(self.data_frame.index, self.plots[i][1].get_data(self.data.Date[self.frame_idx], self.frame_size))
             self.plots[i] = (plot_ref, self.plots[i][1])
             user_plot_artists.append(plot_ref)
 

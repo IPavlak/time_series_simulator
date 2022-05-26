@@ -72,6 +72,17 @@ class SystemIndicator(DataSourceInteraface):
         self.last_data_size = len(output_data)
 
 
-    def get_data(self, start: int, end: int) -> list:
+    def get_data(self, time, n=1) -> list:
         ''' Overloaded interface function '''
-        return self.data[start : end+1]
+        last_time = self.input_data.Date[self.data_idx]
+        step = 0
+        if last_time < time: step = 1
+        elif last_time > time: step = -1
+        data_idx = self.data_idx + step
+
+        while (step > 0 and self.input_data.Date[data_idx] <= time) or \
+                (step < 0 and self.input_data.Date[data_idx] >= time):
+            data_idx += step
+        data_idx -= step
+
+        return self.data[data_idx-n+1 : data_idx+1]
