@@ -8,6 +8,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import Formatter
 
 from animation_handler import *
+from utils import *
 
 
 class DataSourceInteraface:
@@ -73,8 +74,8 @@ class Visualization(FigureCanvas):
 
 
     def _animate(self, framedata):
-        self.frame_idx = framedata.idx
-        self.data_frame = self.data[framedata.idx-self.frame_size+1:framedata.idx+1]
+        self.frame_idx = framedata.core_data_idx
+        self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
         
         self._draw_candles(self.data_frame)
 
@@ -90,7 +91,7 @@ class Visualization(FigureCanvas):
         # self.fig.canvas.draw()
 
         self.make_update = False
-        print("draw_func", framedata.idx, user_plot_artists[0]._animated)
+        print("draw_func", framedata.core_data_idx, user_plot_artists[0]._animated)
         return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists 
 
     def _init_draw(self):

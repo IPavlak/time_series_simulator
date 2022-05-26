@@ -21,7 +21,7 @@ class EventSource:
         return self.running
 
     def call(self, done_event, *args):
-        print("callback", args[0].idx)
+        print("callback", args[0].core_data_idx)
         if self.running and self.func is not None:
             self.func(*args)
             done_event.set()

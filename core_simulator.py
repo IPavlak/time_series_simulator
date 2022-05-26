@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from indicator import SystemIndicator
 from visualizations import Visualization
-from frame_data import *
+from utils import *
 
 
 class Simulator:
@@ -36,7 +36,7 @@ class Simulator:
             print('[Simulator] Simulator cannot start, already running')
         else:
             self.vis.start_sim()
-            self.frame_data.idx = self.start_idx()
+            self.frame_data.idx = get_idx_from_time(self.data, self.start_time)
             self.running = True
             self.control_event.set()
 
@@ -67,6 +67,11 @@ class Simulator:
             self.use_ticks = use_ticks
             self._set_tick_data = tick_data
 
+            self.frame_data.core_data_idx = get_idx_from_time(data, start_time)
+            self.frame_data.time = start_time
+            self.frame_data.curr_candle = None
+            self.frame_data.reset = True
+
             self.is_input_valid = True
 
     def _set_interval(self, interval):
@@ -88,13 +93,6 @@ class Simulator:
     def _set_stop_time(self, time):
         ''' Time should have format yyyy-m[m]-d[d] hh:MM  - or pandas value '''
         self.stop_time = time
-
-    def start_idx(self):
-        return self.data[self.data['Date'] == self.start_time].index.values[0]
-
-    def stop_idx(self):
-        return self.data[self.data['Date'] == self.stop_time].index.values[0]
-
 
     def add_indicator(self, indicator_func, indicator_parameters={}):
         indicator = SystemIndicator(indicator_func, indicator_parameters)
@@ -123,15 +121,17 @@ class Simulator:
 
             # draw frame
             frame_vis_event.wait()
-            print(self.frame_data.idx)
+            print(self.frame_data.core_data_idx)
             frame_vis_event.clear()
             self.comm.update_vis_signal.emit(frame_vis_event, deepcopy(self.frame_data)) # emit signal # TODO: make note about important paradigm when sending parameters in other threads
 
-            self.frame_data.idx += 1
+            self.frame_data.core_data_idx += 1
+            self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
+            self.frame_data.reset = False
             # print("loop time", time()-start_time)
             sleep( max(0.0, self.interval-(time()-start_time) ) )
 
-            if self.frame_data.idx >= self.data.shape[0] or self.data.loc[self.frame_data.idx].Date >= self.stop_time:
+            if self.frame_data.core_data_idx >= self.data.shape[0] or self.data.loc[self.frame_data.core_data_idx].Date >= self.stop_time:
                 self.stop()
             
 

@@ -79,11 +79,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.vis.stop_sim()
 
     def _run(self):
-        sim = Simulator(self.comm, self.vis, 0.2)
-        sim._set_data(data)
+        sim = Simulator(self.comm, self.vis, 1.2)
+        start_time = data.loc[data['Date'] >= '2019-1-3 00:00'].iloc[0].Date
+        stop_time = data.loc[data['Date'] <= '2019-1-6 00:00'].iloc[-1].Date
+        sim.setup_simulator(data, start_time, stop_time, 1.2, False)
         sim.add_indicator(indicator_func=indicator_func)
-        sim._set_start_time(data.loc[data['Date'] >= '2019-1-3 00:00'].iloc[0].Date)
-        sim._set_stop_time(data.loc[data['Date'] <= '2019-1-6 00:00'].iloc[-1].Date)
         sim.start()
 
 ''' End Class'''

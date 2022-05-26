@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from visualizations import DataSourceInteraface
+from utils import *
 
 class ParamNames:
     # PRICE_TYPE = 'Price Type'
@@ -18,8 +19,9 @@ class SystemIndicator(DataSourceInteraface):
         
         self.on_calculate = on_calculate_func
         self.parameters = parameters
-        self.input_data = []
+        self.input_data = [] # TODO: refactor names
         self.data = []
+        self.data_idx = 0
         self.last_data_size = 0
 
     def set_on_calculate_function(self, on_calculate_function: Callable[[Any], List[Number]]):
@@ -37,17 +39,35 @@ class SystemIndicator(DataSourceInteraface):
         for i in range(idx, idx-self.last_data_size, -1):
             self.data[i] = np.NaN
 
-
     def calculate(self, framedata):
+        if framedata.reset:
+            self.data_idx = get_idx_from_time(self.input_data, framedata.time, 'LESS_OR_EQUAL')
+            self._calculate()
+        else:
+            last_time = self.input_data.Date[self.data_idx]
+            step = 0
+            if last_time < framedata.time: step = 1
+            elif last_time > framedata.time: step = -1
+            self.data_idx += step
+
+            while (step > 0 and self.input_data.Date[self.data_idx] <= framedata.time) or \
+                  (step < 0 and self.input_data.Date[self.data_idx] >= framedata.time):
+                self._calculate()
+                self.data_idx += step
+            self.data_idx -= step
+            
+
+    def _calculate(self):
         if not self.parameters.get(ParamNames.PERSIST, True):
-            self.reset_last_data(framedata.idx-1)
-        input_data = self.input_data.iloc[0:framedata.idx+1]
+            self.reset_last_data(self.data_idx)
+        
+        input_data = self.input_data.iloc[0:self.data_idx+1]
         # reverse order - first in list is latest data
         input_data = input_data.iloc[::-1]
         
         output_data = self.on_calculate(input_data)
         for i in range(len(output_data)):
-            self.data[framedata.idx-i] = output_data[i]
+            self.data[self.data_idx-i] = output_data[i]
         
         self.last_data_size = len(output_data)
 
