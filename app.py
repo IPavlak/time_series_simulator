@@ -19,8 +19,10 @@ from core_simulator import *
 
 # Reading from CSV
 
-all_data = pd.read_csv('data/EURUSD/EURUSD60.csv',index_col=0,parse_dates=True)
-all_data.index.name = 'Date'
+all_data = pd.read_csv('data/EURUSD/EURUSD60.csv', index_col=0, parse_dates=True)
+all_tick_data = pd.read_csv('data/EURUSD/EURUSD1.csv', index_col=0, parse_dates=True)
+
+# all_data.index.name = 'Date'
 # print(daily.shape)
 # print(daily.tail(3))
 
@@ -28,9 +30,11 @@ all_data.index.name = 'Date'
 
 # Select data you want to use
 data = all_data.loc['2019-1-1 00:00' : '2019-1-7 00:00']
+tick_data = all_tick_data.loc['2019-1-1 00:00' : '2019-1-7 00:00']
 
 # use plain integer as index => in order to remove time gaps and easier plot of indicators
 data = data.reset_index(drop=False)
+tick_data = tick_data.reset_index(drop=False)
 
 ########################################
 
@@ -82,8 +86,8 @@ class MainWindow(QtWidgets.QMainWindow):
         sim = Simulator(self.comm, self.vis, 1.2)
         start_time = data.loc[data['Date'] >= '2019-1-3 00:00'].iloc[0].Date
         stop_time = data.loc[data['Date'] <= '2019-1-6 00:00'].iloc[-1].Date
-        sim.setup_simulator(data, start_time, stop_time, 1.2, False)
-        sim.add_indicator(indicator_func=indicator_func)
+        sim.setup_simulator(data, start_time, stop_time, 1.2, True, tick_data)
+        # sim.add_indicator(indicator_func=indicator_func)
         sim.start()
 
 ''' End Class'''
