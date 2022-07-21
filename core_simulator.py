@@ -1,6 +1,7 @@
 import threading
 from time import time, sleep
 from copy import deepcopy
+from math import copysign
 
 from indicator import SystemIndicator
 from visualizations import Visualization
@@ -20,6 +21,7 @@ class Simulator:
         self.start_time = None
         self.stop_time = None
         self.use_ticks = False
+        self.tick_data_idx = -1
         self.is_input_valid = False
         self.frame_data = FrameData()
 
@@ -65,10 +67,12 @@ class Simulator:
             self._set_stop_time(stop_time)
             self._set_interval(interval)
             self.use_ticks = use_ticks
-            self._set_tick_data = tick_data
+            self._set_tick_data(tick_data)
+            if self.use_ticks:
+                self.tick_data_idx = get_idx_from_time(self.tick_data, self.start_time)
 
-            self.frame_data.core_data_idx = get_idx_from_time(data, start_time)
-            self.frame_data.time = start_time
+            self.frame_data.core_data_idx = get_idx_from_time(self.data, self.start_time)
+            self.frame_data.time = self.start_time
             self.frame_data.curr_candle = None
             self.frame_data.reset = True
 
@@ -125,13 +129,45 @@ class Simulator:
             frame_vis_event.clear()
             self.comm.update_vis_signal.emit(frame_vis_event, deepcopy(self.frame_data)) # emit signal # TODO: make note about important paradigm when sending parameters in other threads
 
-            self.frame_data.core_data_idx += 1
-            self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
-            self.frame_data.reset = False
+            self._update_frame_data()
+            # self.frame_data.core_data_idx += 1
+            # self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
+            # self.frame_data.reset = False
+
             # print("loop time", time()-start_time)
             sleep( max(0.0, self.interval-(time()-start_time) ) )
 
             if self.frame_data.core_data_idx >= self.data.shape[0] or self.data.loc[self.frame_data.core_data_idx].Date >= self.stop_time:
                 self.stop()
+
+    
+    # TODO: optimize (out) iloc
+    def _update_frame_data(self, step=1):
+        if self.use_ticks:
+            next_time = self.data.Date[self.frame_data.core_data_idx + int(copysign(1, step))]     # step is always 1 for core data when using ticks
+            self.tick_data_idx += step
+            if (step > 0 and self.tick_data.Date[self.tick_data_idx] >= next_time) or \
+               (step < 0 and self.tick_data.Date[self.tick_data_idx] <= next_time):
+                self.tick_data_idx -= step
+                self.frame_data.curr_candle = None
+
+                self.frame_data.core_data_idx += int(copysign(1, step))
+                self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
+            else:
+                candle = self.tick_data.iloc[self.tick_data_idx]
+                if self.frame_data.curr_candle:
+                    self.frame_data.curr_candle = Candle(candle.Date, self.frame_data.curr_candle.Open, \
+                                                                      max(self.frame_data.curr_candle.High, candle.Close), \
+                                                                      min(self.frame_data.curr_candle.Low, candle.Close), \
+                                                                      candle.Close )
+                else:
+                    self.frame_data.curr_candle = Candle(candle.Date, candle.Open, candle.High, candle.Low, candle.Close)
+
+        else:
+            self.frame_data.core_data_idx += step
+            self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
+
+        self.frame_data.reset = False
+
             
 

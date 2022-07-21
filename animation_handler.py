@@ -56,21 +56,30 @@ class AnimationHandler(animation.Animation):
             return False
 
 
+    # TODO: check speed - it is actually running slower :(
     def _draw_frame(self, framedata):
         ''' 
         Call the func with framedata and args. If blitting is desired,
         func needs to return a sequence of any artists that were modified.
         '''
+        new_artists = self._func(framedata)
+
         # clear background to start blitting if not clean already
-        if not self._clean_bg:
-            print("cleaning bg", framedata)
+        if not self._clean_bg or len(self._drawn_artists) != len(new_artists):
+            print("cleaning bg")
             self._clean_bg = True
+            
             for a in self._drawn_artists:
+                a.set_animated(False)
+            for a in new_artists:
                 a.set_animated(True)
+
             self._fig.canvas.draw_idle()
             self._fig.canvas.flush_events() # enforcing to draw whole frame right now before blitting
 
-        self._drawn_artists = self._func(framedata)
+            self._blit_cache.clear()  # clear cached background - trigger saving new background
+
+        self._drawn_artists = new_artists
 
         if self._blit:
             if self._drawn_artists is None:
@@ -108,7 +117,7 @@ class AnimationHandler(animation.Animation):
         # self._fig.canvas.draw_idle()
 
         # background is not clear now because of the artists drawn with draw_idle
-        # it has to be cleaned before blitting can start - otherwise we will have thos artists in each frame
+        # it has to be cleaned before blitting can start - otherwise we will have those artists in each frame
         self._clean_bg = False
         
 

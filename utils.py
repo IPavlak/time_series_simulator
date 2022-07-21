@@ -11,6 +11,14 @@ class FrameData:
     '''
     reset = True
 
+class Candle:
+    def __init__(self, Date, Open, High, Low, Close):
+        self.Date = Date
+        self.Open = Open
+        self.High = High
+        self.Low = Low
+        self.Close = Close
+        
 
 def get_idx_from_time(data, time, op='EQUAL'):
     ''' 

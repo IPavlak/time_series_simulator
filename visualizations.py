@@ -76,8 +76,8 @@ class Visualization(FigureCanvas):
     def _animate(self, framedata):
         self.frame_idx = framedata.core_data_idx
         self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
-        
-        self._draw_candles(self.data_frame)
+
+        self._set_xticks()
 
         # User defined plots
         user_plot_artists = []
@@ -85,14 +85,21 @@ class Visualization(FigureCanvas):
             plot.set_data(self.data_frame.index, data_source.get_data(self.data.Date[self.frame_idx], self.frame_size)) # NaN for not existing values
             user_plot_artists.append(plot)
 
+        if framedata.curr_candle is not None:
+            self._draw_current_candle(framedata.curr_candle)
+            print("draw tick", [self.bars_oc.patches[-1], self.bars_hl.patches[-1]], user_plot_artists)
+            return [self.bars_oc.patches[-1], self.bars_hl.patches[-1]] + user_plot_artists
+
+        self._draw_candles(self.data_frame)
+
         # draw periodically to update y-labels and x-labels
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
         self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
         # self.fig.canvas.draw()
 
         self.make_update = False
-        print("draw_func", framedata.core_data_idx, user_plot_artists[0]._animated)
-        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists 
+        print("draw_func", framedata.core_data_idx)
+        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists
 
     def _init_draw(self):
         print("_init_func", self.data_frame.Date.iloc[0], self.data_frame.Open.iloc[2] < self.data_frame.Close.iloc[2])
@@ -149,11 +156,15 @@ class Visualization(FigureCanvas):
 
     def _setup_x_labels(self):
         self.axes.xaxis.set_major_formatter(MyFormatter(self.data['Date'], '%Y-%m-%d %H:%M')) # TODO: initialize formatter only once
-        locs = range(self.data_frame.index[0], self.data_frame.index[-1]+1, self.x_tick_rate)
-        self.axes.set_xticks(locs)
+        self._set_xticks()
         # format x-axis dates
         self.fig.autofmt_xdate(bottom=0.1, rotation=0, ha='center')
+
+    def _set_xticks(self):
+        locs = range(self.data_frame.index[0], self.data_frame.index[-1]+1, self.x_tick_rate)
+        self.axes.set_xticks(locs)
     
+    # TODO: Optimize this code -> iloc taking most of the time (use data_frame.Close[idx] instead])
     def _draw_candles(self, data_frame):
         for rect, candle in zip(self.bars_oc, data_frame.iloc):
             rect.set_height( abs(candle.Close-candle.Open) )
@@ -170,6 +181,25 @@ class Visualization(FigureCanvas):
         for i in range(len(data_frame.index)):
             self.bars_oc.patches[i].set_x(data_frame.index[i] - self.width_oc/2)
             self.bars_hl.patches[i].set_x(data_frame.index[i] - self.width_hl/2)
+
+
+    def _draw_current_candle(self, candle):
+        rect_oc = self.bars_oc.patches[-1]
+        rect_hl = self.bars_hl.patches[-1]
+
+        rect_oc.set_height( abs(candle.Close-candle.Open) )
+        rect_hl.set_height( abs(candle.High-candle.Low) )
+
+        rect_oc.set_y( min(candle.Open, candle.Close) )
+        rect_hl.set_y( min(candle.Low, candle.High) )
+
+        if candle.Open < candle.Close: 
+            rect_oc.set_color(self.color_up)
+            rect_hl.set_color(self.color_up)
+        else: 
+            rect_oc.set_color(self.color_down)
+            rect_hl.set_color(self.color_down)
+
         
 
 if __name__ == '__main__':
