@@ -65,8 +65,8 @@ class AnimationHandler(animation.Animation):
         new_artists = self._func(framedata)
 
         # clear background to start blitting if not clean already
-        if not self._clean_bg or len(self._drawn_artists) > len(new_artists):  # second condition is specific to this use-case (should be !=), small heuristic for small speed-up
-            print("cleaning bg", len(self._drawn_artists), len(new_artists))
+        if not self._clean_bg or len(self._drawn_artists) != len(new_artists):
+            print("cleaning bg")
             self._clean_bg = True
             
             for a in self._drawn_artists:
@@ -117,7 +117,7 @@ class AnimationHandler(animation.Animation):
         # self._fig.canvas.draw_idle()
 
         # background is not clear now because of the artists drawn with draw_idle
-        # it has to be cleaned before blitting can start - otherwise we will have thos artists in each frame
+        # it has to be cleaned before blitting can start - otherwise we will have those artists in each frame
         self._clean_bg = False
         
 

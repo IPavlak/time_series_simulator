@@ -81,7 +81,7 @@ class SystemIndicator(DataSourceInteraface):
         data_idx = self.data_idx + step
 
         while (step > 0 and self.input_data.Date[data_idx] <= time) or \
-                (step < 0 and self.input_data.Date[data_idx] >= time):
+              (step < 0 and self.input_data.Date[data_idx] >= time):
             data_idx += step
         data_idx -= step
 

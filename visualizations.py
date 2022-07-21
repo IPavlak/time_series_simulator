@@ -77,6 +77,8 @@ class Visualization(FigureCanvas):
         self.frame_idx = framedata.core_data_idx
         self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
 
+        self._set_xticks()
+
         # User defined plots
         user_plot_artists = []
         for plot, data_source in self.plots:
@@ -154,11 +156,15 @@ class Visualization(FigureCanvas):
 
     def _setup_x_labels(self):
         self.axes.xaxis.set_major_formatter(MyFormatter(self.data['Date'], '%Y-%m-%d %H:%M')) # TODO: initialize formatter only once
-        locs = range(self.data_frame.index[0], self.data_frame.index[-1]+1, self.x_tick_rate)
-        self.axes.set_xticks(locs)
+        self._set_xticks()
         # format x-axis dates
         self.fig.autofmt_xdate(bottom=0.1, rotation=0, ha='center')
+
+    def _set_xticks(self):
+        locs = range(self.data_frame.index[0], self.data_frame.index[-1]+1, self.x_tick_rate)
+        self.axes.set_xticks(locs)
     
+    # TODO: Optimize this code -> iloc taking most of the time (use data_frame.Close[idx] instead])
     def _draw_candles(self, data_frame):
         for rect, candle in zip(self.bars_oc, data_frame.iloc):
             rect.set_height( abs(candle.Close-candle.Open) )

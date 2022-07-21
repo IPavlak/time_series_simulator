@@ -140,21 +140,28 @@ class Simulator:
             if self.frame_data.core_data_idx >= self.data.shape[0] or self.data.loc[self.frame_data.core_data_idx].Date >= self.stop_time:
                 self.stop()
 
-        
+    
+    # TODO: optimize (out) iloc
     def _update_frame_data(self, step=1):
         if self.use_ticks:
-            next_time = self.data.Date[self.frame_data.core_data_idx + copysign(1, step)]     # step is always 1 for core data when using ticks
+            next_time = self.data.Date[self.frame_data.core_data_idx + int(copysign(1, step))]     # step is always 1 for core data when using ticks
             self.tick_data_idx += step
             if (step > 0 and self.tick_data.Date[self.tick_data_idx] >= next_time) or \
                (step < 0 and self.tick_data.Date[self.tick_data_idx] <= next_time):
                 self.tick_data_idx -= step
                 self.frame_data.curr_candle = None
 
-                self.frame_data.core_data_idx += copysign(1, step)
+                self.frame_data.core_data_idx += int(copysign(1, step))
                 self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
             else:
                 candle = self.tick_data.iloc[self.tick_data_idx]
-                self.frame_data.curr_candle = Candle(candle.Date, candle.Open, candle.High, candle.Low, candle.Close)
+                if self.frame_data.curr_candle:
+                    self.frame_data.curr_candle = Candle(candle.Date, self.frame_data.curr_candle.Open, \
+                                                                      max(self.frame_data.curr_candle.High, candle.Close), \
+                                                                      min(self.frame_data.curr_candle.Low, candle.Close), \
+                                                                      candle.Close )
+                else:
+                    self.frame_data.curr_candle = Candle(candle.Date, candle.Open, candle.High, candle.Low, candle.Close)
 
         else:
             self.frame_data.core_data_idx += step
