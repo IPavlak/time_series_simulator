@@ -77,7 +77,7 @@ class Visualization(FigureCanvas):
         self.frame_idx = framedata.core_data_idx
         self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
 
-        self._set_xticks()
+        self._set_xticks()  # TODO: check why here and how long does it take
 
         # User defined plots
         user_plot_artists = []
@@ -133,17 +133,14 @@ class Visualization(FigureCanvas):
         return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists
 
 
-    def stop_sim(self):
+    def stop(self):
         self.animation.event_source.stop()
-        self.running = False
 
-    def start_sim(self):
-        self.make_update = False
+    def start(self):
         self.animation.event_source.start()
-        self.running = True
 
     def is_running(self):
-        return self.running
+        return self.animation.event_source.is_running()
 
 
     def add_plot(self, data_source, **kwargs):

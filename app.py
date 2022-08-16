@@ -87,14 +87,14 @@ class MainWindow(QMainWindow):
         pixmap = getattr(QStyle, 'SP_MediaSeekBackward')
         prev_icon = self.style().standardIcon(pixmap)
         prev_btn.setIcon(prev_icon)
-        # prev_btn.clicked.connect(self.sim.step_backward)
+        prev_btn.clicked.connect(self.sim.step_backward)
         hlay.addWidget(prev_btn)
 
         next_btn = QPushButton()
         pixmap = getattr(QStyle, 'SP_MediaSeekForward')
         next_icon = self.style().standardIcon(pixmap)
         next_btn.setIcon(next_icon)
-        # next_btn.clicked.connect(self.sim.step_forward)
+        next_btn.clicked.connect(self.sim.step_forward)
         hlay.addWidget(next_btn)
 
         vlay.addLayout(hlay)
