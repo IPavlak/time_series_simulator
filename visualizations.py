@@ -150,6 +150,10 @@ class Visualization(FigureCanvas):
     def set_data(self, data):
         self.data = data
 
+    def set_init_frame(self, data_frame):
+        if not self.is_running():
+            self.frame_idx = data_frame.core_data_idx
+            self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
 
     def _setup_x_labels(self):
         self.axes.xaxis.set_major_formatter(MyFormatter(self.data['Date'], '%Y-%m-%d %H:%M')) # TODO: initialize formatter only once

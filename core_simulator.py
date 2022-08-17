@@ -101,6 +101,11 @@ class Simulator:
 
                 self.is_input_valid = True
 
+                if self.vis.is_running():
+                    self._draw_init_frame()
+                else:
+                    self.vis.set_init_frame(self.frame_data)
+
     def _set_interval(self, interval):
         self.interval = interval
 
@@ -132,7 +137,7 @@ class Simulator:
 
         while True:
             # sleep if visualization event source is not running
-            while not self.vis.animation.event_source.is_running():
+            while not self.vis.is_running():
                 sleep( max(0.05, self.interval) )
 
             self.control_event.wait()
@@ -197,4 +202,13 @@ class Simulator:
         self.frame_data.reset = False
 
             
+    def _draw_init_frame(self):
+        frame_data = FrameData()
+        frame_data.core_data_idx = get_idx_from_time(self.data, self.start_time)
+        frame_data.time = self.start_time
+        frame_data.curr_candle = None
+        frame_data.reset = True
 
+        self.frame_vis_event.wait()
+        self.frame_vis_event.clear()
+        self.comm.update_vis_signal.emit(self.frame_vis_event, deepcopy(frame_data))
