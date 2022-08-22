@@ -144,15 +144,14 @@ class Simulator:
 
             start_time = time()
 
-            # indicators update
-            for indicator in self.indicators:
-                indicator.calculate(self.frame_data)
-
-
             self._update_frame_data()
             # self.frame_data.core_data_idx += 1
             # self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
             # self.frame_data.reset = False
+
+            # indicators update
+            for indicator in self.indicators:
+                indicator.calculate(self.frame_data)
 
             # draw frame
             self._draw_frame()
@@ -176,17 +175,17 @@ class Simulator:
     # TODO: optimize (out) iloc
     def _update_frame_data(self, step=1):
         if self.use_ticks:
+            prev_time = self.data.Date[self.frame_data.core_data_idx]
             next_time = self.data.Date[self.frame_data.core_data_idx + int(copysign(1, step))]     # step is always 1 for core data when using ticks
             self.tick_data_idx += step
+            candle = self.tick_data.iloc[self.tick_data_idx]
             if (step > 0 and self.tick_data.Date[self.tick_data_idx] >= next_time) or \
-               (step < 0 and self.tick_data.Date[self.tick_data_idx] <= next_time):
-                self.tick_data_idx -= step
-                self.frame_data.curr_candle = None
+               (step < 0 and self.tick_data.Date[self.tick_data_idx] <= prev_time):
 
+                self.frame_data.curr_candle = Candle(candle.Date, candle.Open, candle.High, candle.Low, candle.Close)
                 self.frame_data.core_data_idx += int(copysign(1, step))
                 self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
             else:
-                candle = self.tick_data.iloc[self.tick_data_idx]
                 if self.frame_data.curr_candle:
                     self.frame_data.curr_candle = Candle(candle.Date, self.frame_data.curr_candle.Open, \
                                                                       max(self.frame_data.curr_candle.High, candle.Close), \

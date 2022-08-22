@@ -74,6 +74,7 @@ class Visualization(FigureCanvas):
 
 
     def _animate(self, framedata):
+        new_frame = self.frame_idx != framedata.core_data_idx
         self.frame_idx = framedata.core_data_idx
         self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
 
@@ -85,20 +86,26 @@ class Visualization(FigureCanvas):
             plot.set_data(self.data_frame.index, data_source.get_data(self.data.Date[self.frame_idx], self.frame_size)) # NaN for not existing values
             user_plot_artists.append(plot)
 
-        if framedata.curr_candle is not None:
+        # Candles
+        if framedata.curr_candle is None or new_frame:
+            self._draw_candles(self.data_frame)
+
+        if framedata.curr_candle is not None and new_frame:
             self._draw_current_candle(framedata.curr_candle)
-            print("draw tick", [self.bars_oc.patches[-1], self.bars_hl.patches[-1]], user_plot_artists)
+        elif framedata.curr_candle is not None:
+            self._draw_current_candle(framedata.curr_candle)
+            print("draw tick", framedata.time, framedata.curr_candle.Date)
             return [self.bars_oc.patches[-1], self.bars_hl.patches[-1]] + user_plot_artists
 
-        self._draw_candles(self.data_frame)
 
         # draw periodically to update y-labels and x-labels
+        
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
         self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
         # self.fig.canvas.draw()
 
-        self.make_update = False
         print("draw_func", framedata.core_data_idx)
+        print("draw time", time()-start)
         return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists
 
     def _init_draw(self):
