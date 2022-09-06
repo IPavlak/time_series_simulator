@@ -92,6 +92,7 @@ class Visualization(FigureCanvas):
 
         if framedata.curr_candle is not None and new_frame:
             self._draw_current_candle(framedata.curr_candle)
+            print("draw tick", framedata.time, framedata.curr_candle.Date)
         elif framedata.curr_candle is not None:
             self._draw_current_candle(framedata.curr_candle)
             print("draw tick", framedata.time, framedata.curr_candle.Date)

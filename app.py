@@ -35,6 +35,9 @@ tick_data = all_tick_data.loc['2019-1-1 00:00' : '2019-1-7 00:00']
 data = data.reset_index(drop=False)
 tick_data = tick_data.reset_index(drop=False)
 
+# print(data)
+# print(tick_data)
+# exit()
 ########################################
 
 
@@ -115,7 +118,7 @@ class MainWindow(QMainWindow):
         frame_vis_event.set()
         
         # comm.start_vis_signal.emit()
-        self.vis.start_sim()
+        self.vis.start()
         for i in range(8):
             # print(i)
             # self.vis.update_frame_idx(i)
@@ -126,13 +129,13 @@ class MainWindow(QMainWindow):
         # for i in range(8):
         #     self.vis.update_frame_idx(i)
         #     sleep(0.5)
-        self.vis.stop_sim()
+        self.vis.stop()
 
     def _run(self):
         # sim = Simulator(self.comm, self.vis, 1.2)
         start_time = data.loc[data['Date'] >= '2019-1-3 00:00'].iloc[0].Date
         stop_time = data.loc[data['Date'] <= '2019-1-6 00:00'].iloc[-1].Date
-        self.sim.setup_simulator(data, start_time, stop_time, 0.4, False)
+        self.sim.setup_simulator(data, start_time, stop_time, 0.2, True, tick_data=tick_data)
         # sim.add_indicator(indicator_func=indicator_func)
         self.sim.start()
 

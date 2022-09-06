@@ -182,23 +182,49 @@ class Simulator:
             if (step > 0 and self.tick_data.Date[self.tick_data_idx] >= next_time) or \
                (step < 0 and self.tick_data.Date[self.tick_data_idx] <= prev_time):
 
-                self.frame_data.curr_candle = Candle(candle.Date, candle.Open, candle.High, candle.Low, candle.Close)
                 self.frame_data.core_data_idx += int(copysign(1, step))
                 self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
+                self.frame_data.curr_candle = self._calc_curr_candle(candle, step, True)
             else:
-                if self.frame_data.curr_candle:
-                    self.frame_data.curr_candle = Candle(candle.Date, self.frame_data.curr_candle.Open, \
-                                                                      max(self.frame_data.curr_candle.High, candle.Close), \
-                                                                      min(self.frame_data.curr_candle.Low, candle.Close), \
-                                                                      candle.Close )
-                else:
-                    self.frame_data.curr_candle = Candle(candle.Date, candle.Open, candle.High, candle.Low, candle.Close)
+                self.frame_data.time = candle.Date
+                self.frame_data.curr_candle = self._calc_curr_candle(candle, step)
 
         else:
             self.frame_data.core_data_idx += step
             self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
 
         self.frame_data.reset = False
+
+    def _calc_curr_candle(self, tick_candle, step, new_frame=False):
+        if step > 0:
+            if self.frame_data.curr_candle is None or new_frame:
+                return Candle(tick_candle.Date, tick_candle.Open, tick_candle.High, tick_candle.Low, tick_candle.Close)
+            else:
+                return Candle(tick_candle.Date, self.frame_data.curr_candle.Open, \
+                                                max(self.frame_data.curr_candle.High, tick_candle.Close), \
+                                                min(self.frame_data.curr_candle.Low, tick_candle.Close), \
+                                                tick_candle.Close )
+        else:
+            prev_time = self.data.Date[self.frame_data.core_data_idx]
+            next_time = self.data.Date[self.frame_data.core_data_idx + 1]
+
+            # find tick idx of candle at prev_time
+            tick_idx = self.tick_data_idx
+            while self.tick_data.Date[tick_idx] > prev_time:
+                tick_idx += step
+            candle = Candle(self.tick_data.Date[tick_idx], self.tick_data.Open[tick_idx], self.tick_data.High[tick_idx],
+                            self.tick_data.Low[tick_idx], self.tick_data.Close[tick_idx])
+
+            # go through the candles from prev_time to current one and build a candle
+            while tick_idx <= self.tick_data_idx:
+                candle.High = max(candle.High, self.tick_data.Close[tick_idx])
+                candle.Low = min(candle.Low, self.tick_data.Close[tick_idx])
+                candle.Close = self.tick_data.Close[tick_idx]
+                tick_idx -= step
+
+            candle.Date = tick_candle.Date
+            return candle
+
 
             
     def _draw_init_frame(self):
