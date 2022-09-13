@@ -179,14 +179,13 @@ class Simulator:
             next_time = self.data.Date[self.frame_data.core_data_idx + int(copysign(1, step))]     # step is always 1 for core data when using ticks
             self.tick_data_idx += step
             candle = self.tick_data.iloc[self.tick_data_idx]
+            self.frame_data.time = candle.Date
             if (step > 0 and self.tick_data.Date[self.tick_data_idx] >= next_time) or \
-               (step < 0 and self.tick_data.Date[self.tick_data_idx] <= prev_time):
+               (step < 0 and self.tick_data.Date[self.tick_data_idx] <  prev_time):
 
                 self.frame_data.core_data_idx += int(copysign(1, step))
-                self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
                 self.frame_data.curr_candle = self._calc_curr_candle(candle, step, True)
             else:
-                self.frame_data.time = candle.Date
                 self.frame_data.curr_candle = self._calc_curr_candle(candle, step)
 
         else:
