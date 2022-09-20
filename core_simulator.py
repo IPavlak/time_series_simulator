@@ -55,11 +55,13 @@ class Simulator:
     def step_forward(self):
         if not self.running and self.frame_data.time <= self.stop_time:
             self._update_frame_data()
+            self.update_indicators()
             self._draw_frame()
 
     def step_backward(self):
         if not self.running and self.frame_data.time >= self.start_time:
             self._update_frame_data(step=-1)
+            self.update_indicators()
             self._draw_frame()
 
     def reset(self):
@@ -69,6 +71,7 @@ class Simulator:
             self.frame_data.core_data_idx = get_idx_from_time(self.data, self.start_time)
             if self.use_ticks:
                 self.tick_data_idx = get_idx_from_time(self.tick_data, self.start_time)
+            self.frame_data.curr_candle = None
 
     def setup_simulator(self, data, start_time, stop_time, interval, use_ticks, tick_data=None):
         if self.running:
@@ -105,6 +108,9 @@ class Simulator:
                     self._draw_init_frame()
                 else:
                     self.vis.set_init_frame(self.frame_data)
+                
+                for indicator in self.indicators:
+                    indicator.init(self.frame_data.core_data_idx)
 
     def _set_interval(self, interval):
         self.interval = interval
@@ -126,11 +132,14 @@ class Simulator:
         ''' Time should have format yyyy-m[m]-d[d] hh:MM  - or pandas value '''
         self.stop_time = time
 
-    def add_indicator(self, indicator_func, indicator_parameters={}):
-        indicator = SystemIndicator(indicator_func, indicator_parameters)
+    def add_indicator(self, indicator_func, indicator_parameters={}, init_func=None):
+        indicator = SystemIndicator(indicator_func, indicator_parameters, init_func)
         indicator.set_input_data(self.data)
         self.indicators.append(indicator)
         self.vis.add_plot(indicator)
+
+        if self.is_input_valid:
+            indicator.init(self.frame_data.core_data_idx)
 
     def run(self):
         sleep(1.0) # wait for initialization to finish
@@ -149,9 +158,7 @@ class Simulator:
             # self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
             # self.frame_data.reset = False
 
-            # indicators update
-            for indicator in self.indicators:
-                indicator.calculate(self.frame_data)
+            self.update_indicators()
 
             # draw frame
             self._draw_frame()
@@ -193,6 +200,10 @@ class Simulator:
             self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
 
         self.frame_data.reset = False
+    
+    def update_indicators(self):
+        for indicator in self.indicators:
+                indicator.calculate(self.frame_data)
 
     def _calc_curr_candle(self, tick_candle, step, new_frame=False):
         if step > 0:
