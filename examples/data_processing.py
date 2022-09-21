@@ -24,6 +24,7 @@ start = time()
 # date = data['Date'].iloc[130456]
 # date = data.iloc[130456].Date
 date = data.Date[130456]
+# date = data.Date[130456:130457].index[0]
 t = time() - start
 print('Get date from index: %f' % t)
 
