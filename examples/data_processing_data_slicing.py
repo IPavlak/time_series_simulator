@@ -54,8 +54,45 @@ date = data_slice.Date
 t = time() - start
 print("Getting Date from single data frame: %f" % t)
 
+print()
+
+# Reversing the data
+
+start = time()
+data_slice = data.iloc[::-1]
+t = time() - start
+print("Reversing with iloc: %f" % t)
+
+start = time()
+data_slice = data[::-1]
+t = time() - start
+print("Reversing with []: %f" % t)
+
+data_slice = data[::-1]
+start = time()
+data_slice = data_slice.reset_index(drop=True)
+t = time() - start
+print("Resetting the index: %f" % t)
+
+data_slice = data[::-1]
+start = time()
+data_slice = data_slice.reindex(index=data_slice.index[::-1])
+t = time() - start
+print("Reindexing: %f" % t)
+
+data_slice = data[::-1]
+start = time()
+data_slice.reset_index(inplace=True, drop=True)
+t = time() - start
+print("Resetting the index: %f" % t)
+# print(data_slice)
+
+
 ####################################################
 # CONCLUSION:
 # Getting data slices is the same with iloc and using integer index with [] operator.
 # [] operator is about 20% faster.
 # Execution time is independent of data slice size
+
+# Resetting the index is fastest to do inplace - 1000x faster !!!
+# Reindexing and reiturning data frame with new index (not inplace) is very expensive
