@@ -1,4 +1,3 @@
-from tokenize import Number
 from typing import Any, Dict, List, Callable
 from numbers import Number
 import numpy as np
@@ -50,7 +49,8 @@ class SystemIndicator(DataSourceInteraface):
         for index in range(init_start_idx, init_idx+1):
             input_data = self.input_data.iloc[0:index+1]
             # reverse order - first in list is latest data
-            input_data = input_data.iloc[::-1].reset_index(drop=True)
+            input_data = input_data[::-1]
+            input_data.reset_index(inplace=True, drop=True)
             output_data = self.on_init(input_data)
             for i in range(len(output_data)):
                 self.data[index-i] = output_data[i]
@@ -79,10 +79,11 @@ class SystemIndicator(DataSourceInteraface):
                                            'Close': framedata.curr_candle.Close},  index=[0])
             # TODO: append or concat current candle (benchmark) to input data
             # add current candle to input data at index=0 and reset indexes
-            input_data = current_candle.append(input_data.iloc[::-1], ignore_index=True)
+            input_data = current_candle.append(input_data[::-1], ignore_index=True)
         else:
             # reverse order - first in list is latest data (index=0)
-            input_data = input_data.iloc[::-1].reset_index(drop=True)
+            input_data = input_data[::-1]
+            input_data.reset_index(inplace=True, drop=True)
 
         self._calculate(input_data)
    
