@@ -27,11 +27,28 @@ del data, index
 data = deepcopy(data_orig) # pandas is doing caching and test before can optimize test after
 start = time()
 # date = data['Date'].iloc[130456]
-# date = data.iloc[130456].Date
 date = data.Date[130456]            # this somehow works 30% faster with data_orig
-# date = data.Date[130456:130457].index[0]
 t = time() - start
-print('Get date from index: %f' % t)
+print('Get date from index ( data.Date[index] ): %f' % t)
+# print(type(date))
+del data, date
+
+# Getting date from index
+data = deepcopy(data_orig)
+start = time()
+date = data.iloc[130456].Date
+t = time() - start
+print('Get date from index ( data.iloc[index].Date ): %f' % t)
+# print(type(date))
+del data, date
+
+# Getting date from index
+data = deepcopy(data_orig)
+start = time()
+date = data[130456:130457].Date.values[0]
+t = time() - start
+print('Get date from index by slicing single frame: %f' % t)
+# print(type(date))
 del data, date
 
 # Getting candle (close price) from date
@@ -89,8 +106,15 @@ del data, close
 # Getting data frame from beginning to some date
 data = deepcopy(data_orig)
 start = time()
+dataframe = data.iloc[600000:6124565]
+t = time() - start
+print('Get dataframe from beginning to some index: %f' % t)
+del data, dataframe
+
+# Getting data frame from beginning to some date
+data = deepcopy(data_orig)
+start = time()
 dataframe = data['2003-10-15 14:47:0':'2019-1-3 01:00']
-# dataframe = data.iloc[600000:6124565]
 t = time() - start
 print('Get dataframe from beginning to some date: %f' % t)
 del data, dataframe
@@ -109,5 +133,3 @@ del data, dataframe
 # Also one big advantage of using integer as index is that selecting part of data frame is much faster.
 # Even if selecting with iloc (when using date as index) it is nowhere near as fast as when using integer as index.
 # This is probably the biggest downfall of using date as index.
-
-# Note: it is about 4x faster to first select column and then search the rows than vise versa.
