@@ -1,3 +1,4 @@
+from copy import deepcopy
 import pandas as pd
 from time import time
 
@@ -7,38 +8,47 @@ print('# Benchmark getting data with integer as index')
 
 # Reading from CSV
 
-data = pd.read_csv('data/EURUSD/EURUSD1.csv',index_col=0,parse_dates=True)
-data.index.name = 'Date'
-data = data.reset_index(drop=False)
+data_orig = pd.read_csv('data/EURUSD/EURUSD1.csv',index_col=0,parse_dates=True)
+data_orig.index.name = 'Date'
+data_orig = data_orig.reset_index(drop=False)
 
-print('Data size: %d' % data.shape[0])
+print('Data size: %d' % data_orig.shape[0])
 
 # Getting index from date
+data = deepcopy(data_orig)
 start = time()
 index = data[data['Date'] == '2019-1-3 01:00'].index[0]
 t = time() - start
 print('Get index from date: %f (index=%d)' % (t, index))
+del data, index
+
 
 # Getting date from index
+data = deepcopy(data_orig) # pandas is doing caching and test before can optimize test after
 start = time()
 # date = data['Date'].iloc[130456]
 # date = data.iloc[130456].Date
-date = data.Date[130456]
+date = data.Date[130456]            # this somehow works 30% faster with data_orig
 # date = data.Date[130456:130457].index[0]
 t = time() - start
 print('Get date from index: %f' % t)
+del data, date
 
 # Getting candle (close price) from date
+data = deepcopy(data_orig)
 start = time()
 close = data[data['Date'] == '2019-1-3 01:00'].Close
 t = time() - start
 print('Get close price from date: %f (Close=%f)' % (t, close))
+del data, close
 
 # Getting data frame from beginning to some index
+data = deepcopy(data_orig)
 start = time()
 dataframe = data[600000:6124565]
 t = time() - start
 print('Get dataframe from beginning to some index: %f' % t)
+del data, dataframe
 
 print()
 #################################
@@ -46,35 +56,44 @@ print('# Benchmark getting data with date as index')
 
 # Reading from CSV
 
-data = pd.read_csv('data/EURUSD/EURUSD1.csv',index_col=0,parse_dates=True)
-data.index.name = 'Date'
+del data_orig
+data_orig = pd.read_csv('data/EURUSD/EURUSD1.csv',index_col=0,parse_dates=True)
+data_orig.index.name = 'Date'
 
-print('Data size: %d' % data.shape[0])
+print('Data size: %d' % data_orig.shape[0])
 
 # Getting index from date
+data = deepcopy(data_orig)
 start = time()
 index = data.index.get_loc('2019-1-3 01:00')
 t = time() - start
 print('Get index from date: %f (index=%d)' % (t, index))
+del data, index
 
 # Getting date from index
+data = deepcopy(data_orig)
 start = time()
 date = data.index[130456]
 t = time() - start
 print('Get date from index: %f' % t)
+del data, date
 
 # Getting candle (close price) from date
+data = deepcopy(data_orig)
 start = time()
 close = data.loc['2019-1-3 01:00'].Close
 t = time() - start
 print('Get close price from date: %f (Close=%f)' % (t, close))
+del data, close
 
 # Getting data frame from beginning to some date
+data = deepcopy(data_orig)
 start = time()
 dataframe = data['2003-10-15 14:47:0':'2019-1-3 01:00']
 # dataframe = data.iloc[600000:6124565]
 t = time() - start
 print('Get dataframe from beginning to some date: %f' % t)
+del data, dataframe
 
 
 
