@@ -170,7 +170,7 @@ class Simulator:
             # print("loop time", time()-start_time)
             sleep( max(0.0, self.interval-(time()-start_time) ) )
 
-            if self.frame_data.core_data_idx >= self.data.shape[0] or self.data.loc[self.frame_data.core_data_idx].Date >= self.stop_time:
+            if self.frame_data.core_data_idx >= self.data.shape[0] or self.data.Date[self.frame_data.core_data_idx] >= self.stop_time:
                 self.stop()
 
     def _draw_frame(self):
