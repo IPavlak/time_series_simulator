@@ -36,7 +36,7 @@ class SystemIndicator(DataSourceInteraface):
 
     def set_input_data(self, input_data):
         self.input_data = input_data
-        self.data = np.zeros((len(input_data), 1))
+        self.data = np.zeros((input_data.shape[0], 1))
         self.data[:] = np.NaN
 
     # TODO: Optimize out iloc
@@ -54,6 +54,8 @@ class SystemIndicator(DataSourceInteraface):
             output_data = self.on_init(input_data)
             for i in range(len(output_data)):
                 self.data[index-i] = output_data[i]
+
+        self.data_idx = init_idx
         self.init_executed = True
 
     def reset_last_data(self, idx):
@@ -81,6 +83,7 @@ class SystemIndicator(DataSourceInteraface):
             # add current candle to input data at index=0 and reset indexes
             input_data = current_candle.append(input_data[::-1], ignore_index=True)
         else:
+            input_data = input_data.append(self.input_data.iloc[self.data_idx : self.data_idx+1], ignore_index=True)
             # reverse order - first in list is latest data (index=0)
             input_data = input_data[::-1]
             input_data.reset_index(inplace=True, drop=True)
