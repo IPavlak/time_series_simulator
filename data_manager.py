@@ -7,11 +7,14 @@ Only this class is dependant on data structure and framework used to process dat
 class DataManager:
     def __init__(self, data=None):
         self.data = data
+        self.data_file = ""
 
     def load_data(self, file: str, index_col=0) -> None:
-        self.data = pd.read_csv(file, index_col=index_col, parse_dates=True)
-        # use plain integer index
-        self.data = self.data.reset_index(drop=False)
+        if (self.data_file != file):
+            self.data = pd.read_csv(file, index_col=index_col, parse_dates=True)
+            self.data_file = file
+            # use plain integer index
+            self.data = self.data.reset_index(drop=False)
 
     '''
     Dereference operator - []
@@ -35,4 +38,13 @@ class DataManager:
         else:
             return self.data.__getattr__(key)
 
+    def __eq__(self, other):
+        return self.data == other
+
 data = DataManager()
+tick_data = DataManager()
+
+if __name__ == '__main__':
+    data_file = 'data/EURUSD/EURUSD60.csv'
+    data.load_data(data_file)
+    time = data.data.loc[data.data['Date'] >= '2019-1-3 00:00'].iloc[0].Date
