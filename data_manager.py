@@ -41,6 +41,9 @@ class DataManager:
     def __eq__(self, other):
         return self.data == other
 
+    def __len__(self):
+        return self.data.shape[0]
+
 data = DataManager()
 tick_data = DataManager()
 

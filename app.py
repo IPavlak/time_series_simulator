@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
         # sim = Simulator(self.comm, self.vis, 1.2)
         start_time = data.loc[data['Date'] >= '2019-1-3 00:00'].iloc[0].Date
         stop_time = data.loc[data['Date'] <= '2019-1-6 00:00'].iloc[-1].Date
-        self.sim.setup_simulator(data, start_time, stop_time, 0.2, True, tick_data=tick_data)
+        self.sim.setup_simulator(data_file, start_time, stop_time, interval=0.2, use_ticks=True, tick_data_file=tick_data_file)
         self.sim.add_indicator(indicator_func=indicator_func, init_func=indicator_func)
         self.sim.start()
 

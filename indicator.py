@@ -3,6 +3,7 @@ from numbers import Number
 import numpy as np
 import pandas as pd
 
+import data_manager as dm
 from visualizations import DataSourceInteraface
 from utils import *
 
@@ -19,7 +20,7 @@ class SystemIndicator(DataSourceInteraface):
         self.on_calculate = on_calculate_func
         self.on_init = on_init_function
         self.parameters = parameters
-        self.input_data = [] # TODO: refactor names
+        self.input_data = dm.data # TODO: refactor names
         self.data = []
         self.data_idx = 0
         self.last_data_size = 0
@@ -34,16 +35,14 @@ class SystemIndicator(DataSourceInteraface):
     def set_parameters(self, parameters: Dict):
         self.parameters = parameters
 
-    def set_input_data(self, input_data):
-        self.input_data = input_data
-        self.data = np.zeros((input_data.shape[0], 1))
-        self.data[:] = np.NaN
-
     # TODO: Optimize out iloc
     def init(self, init_idx, n=100):
         if self.on_init is None:
             print("[SystemIndicator] Initialization called, but init function not provided")
             return
+
+        self.data = np.zeros((self.input_data.shape[0], 1))
+        self.data[:] = np.NaN
         
         init_start_idx = max(1, init_idx-n)
         for index in range(init_start_idx, init_idx+1):

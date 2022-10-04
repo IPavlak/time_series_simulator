@@ -3,6 +3,7 @@ from time import time, sleep
 from copy import deepcopy
 from math import copysign
 
+import data_manager as dm
 from indicator import SystemIndicator
 from visualizations import Visualization
 from utils import *
@@ -18,7 +19,8 @@ class Simulator:
         self.frame_vis_event = threading.Event()
         self.frame_vis_event.set()
 
-        self.data = None
+        self.data = dm.data
+        self.tick_data = dm.tick_data
         self.start_time = None
         self.stop_time = None
         self.use_ticks = False
@@ -73,27 +75,27 @@ class Simulator:
                 self.tick_data_idx = get_idx_from_time(self.tick_data, self.start_time)
             self.frame_data.curr_candle = None
 
-    def setup_simulator(self, data, start_time, stop_time, interval, use_ticks, tick_data=None):
+    def setup_simulator(self, data_file, start_time, stop_time, interval, use_ticks, tick_data_file=None):
         if self.running:
             print('[Simulator] Cannot apply setup while running')
         else:
-            # All input checks
+            # All input checks #TODO: check if files exist
             self.is_input_valid = False
-            if data is None or start_time is None or stop_time is None or use_ticks is None:
+            if data_file is None or start_time is None or stop_time is None or use_ticks is None:
                 print('[Simulator] Missing some input parameters')
             elif start_time >= stop_time:
                 print('[Simulator] Start or stop time is invalid')
             elif interval < 0:
-                print('[Simulator] Interval parameter is not a positive number')
-            elif use_ticks and tick_data is None:
+                print('[Simulator] Interval parameter must be a positive number')
+            elif use_ticks and tick_data_file is None:
                 print('[Simulator] Missing tick data')
             else:
-                self._set_data(data)
+                self._load_data(data_file)
                 self._set_start_time(start_time)
                 self._set_stop_time(stop_time)
                 self._set_interval(interval)
                 self.use_ticks = use_ticks
-                self._set_tick_data(tick_data)
+                self._load_tick_data(tick_data_file)
                 if self.use_ticks:
                     self.tick_data_idx = get_idx_from_time(self.tick_data, self.start_time)
 
@@ -115,14 +117,11 @@ class Simulator:
     def _set_interval(self, interval):
         self.interval = interval
 
-    def _set_tick_data(self, data):
-        self.tick_data = data
-
-    def _set_data(self, data):
-        self.data = data
-        self.vis.set_data(data)
-        for indicator in self.indicators:
-            indicator.set_input_data(data)
+    def _load_tick_data(self, data_file):
+        self.tick_data.load_data(data_file)
+    
+    def _load_data(self, data_file):
+        self.data.load_data(data_file)
 
     def _set_start_time(self, time):
         ''' Time should have format yyyy-m[m]-d[d] hh:MM  - or pandas value '''
@@ -134,7 +133,6 @@ class Simulator:
 
     def add_indicator(self, indicator_func, indicator_parameters={}, init_func=None):
         indicator = SystemIndicator(indicator_func, indicator_parameters, init_func)
-        indicator.set_input_data(self.data)
         self.indicators.append(indicator)
         self.vis.add_plot(indicator)
 

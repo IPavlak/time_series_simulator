@@ -7,6 +7,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.ticker import Formatter
 
+import data_manager as dm
 from animation_handler import *
 from utils import *
 
@@ -51,7 +52,7 @@ class Visualization(FigureCanvas):
         self.x_tick_rate = 4
 
         # Data
-        self.data = data
+        self.data = dm.data
         self.data_frame = data[0:10]
         self.frame_size = 10  # TODO: depends on window size
 
@@ -154,9 +155,6 @@ class Visualization(FigureCanvas):
     def add_plot(self, data_source, **kwargs):
         plot_ref, = self.axes.plot([], [], **kwargs)
         self.plots.append((plot_ref, data_source))
-
-    def set_data(self, data):
-        self.data = data
 
     def set_init_frame(self, data_frame):
         if not self.is_running():
