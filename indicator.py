@@ -35,7 +35,6 @@ class SystemIndicator(DataSourceInteraface):
     def set_parameters(self, parameters: Dict):
         self.parameters = parameters
 
-    # TODO: Optimize out iloc
     def init(self, init_idx, n=100):
         if self.on_init is None:
             print("[SystemIndicator] Initialization called, but init function not provided")
@@ -46,10 +45,9 @@ class SystemIndicator(DataSourceInteraface):
         
         init_start_idx = max(1, init_idx-n)
         for index in range(init_start_idx, init_idx+1):
-            input_data = self.input_data.iloc[0:index+1]
+            input_data = self.input_data[0:index+1]
             # reverse order - first in list is latest data
-            input_data = input_data[::-1]
-            input_data.reset_index(inplace=True, drop=True)
+            input_data.reverse()
             output_data = self.on_init(input_data)
             for i in range(len(output_data)):
                 self.data[index-i] = output_data[i]
@@ -61,7 +59,6 @@ class SystemIndicator(DataSourceInteraface):
         for i in range(idx, idx-self.last_data_size, -1):
             self.data[i] = np.NaN
 
-    # TODO: optimize out iloc
     def calculate(self, framedata):
         if self.on_init is not None and not self.init_executed:
             print("[SystemIndicator] Init function provided but unused, cannot proceed")
@@ -69,7 +66,7 @@ class SystemIndicator(DataSourceInteraface):
         
         self.data_idx = framedata.core_data_idx
 
-        input_data = self.input_data.iloc[0:self.data_idx]
+        input_data = self.input_data[0:self.data_idx]
 
         # TODO: BENCHMARK
         if framedata.curr_candle is not None:
@@ -78,14 +75,11 @@ class SystemIndicator(DataSourceInteraface):
                                            'High':  framedata.curr_candle.High,
                                            'Low':   framedata.curr_candle.Low,
                                            'Close': framedata.curr_candle.Close},  index=[0])
-            # TODO: append or concat current candle (benchmark) to input data
             # add current candle to input data at index=0 and reset indexes
             input_data = current_candle.append(input_data[::-1], ignore_index=True)
         else:
-            input_data = input_data.append(self.input_data.iloc[self.data_idx : self.data_idx+1], ignore_index=True)
-            # reverse order - first in list is latest data (index=0)
-            input_data = input_data[::-1]
-            input_data.reset_index(inplace=True, drop=True)
+            # slicing is faster than getting single data frame - flag as dependant on data structure
+            input_data = self.input_data[self.data_idx : self.data_idx+1].append(input_data[::-1], ignore_index=True)
 
         self._calculate(input_data)
    

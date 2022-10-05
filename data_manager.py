@@ -13,7 +13,7 @@ class DataManager:
         if (self.data_file != file):
             self.data = pd.read_csv(file, index_col=index_col, parse_dates=True)
             self.data_file = file
-            # use plain integer index
+            # use plain integer index => in order to remove time gaps and easier plot of indicators
             self.data = self.data.reset_index(drop=False)
 
     '''
@@ -38,11 +38,28 @@ class DataManager:
         else:
             return self.data.__getattr__(key)
 
+    '''
+    Operators
+    '''
     def __eq__(self, other):
         return self.data == other
+    def __lt__(self, other):
+        return self.data < other
+    def __gt__(self, other):
+        return self.data > other
+    def __le__(self, other):
+        return self.data <= other
+    def __ge__(self, other):
+        return self.data >= other
+    def __ne__(self, other):
+        return self.data != other
 
     def __len__(self):
         return self.data.shape[0]
+
+    def reverse(self):
+        self.data = self.data[::-1]
+        self.data.reset_index(inplace=True, drop=True)
 
 data = DataManager()
 tick_data = DataManager()
