@@ -100,11 +100,11 @@ class Simulator:
                 self._set_stop_time(stop_time)
                 self._set_interval(interval)
                 self.use_ticks = use_ticks
-                self._load_tick_data(tick_data_file)
                 if self.use_ticks:
+                    self._load_tick_data(tick_data_file)
                     self.tick_data_idx = get_idx_from_time(self.tick_data, self.start_time)
 
-                self.frame_data.core_data_idx = get_idx_from_time(self.data, self.start_time)
+                self.frame_data.core_data_idx = get_idx_from_time(self.data, self.start_time, op='GREATER_OR_EQUAL')
                 self.frame_data.time = self.start_time
                 self.frame_data.curr_candle = None
                 self.frame_data.reset = True
