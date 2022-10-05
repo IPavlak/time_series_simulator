@@ -31,7 +31,7 @@ class MyFormatter(Formatter):
 
 
 class Visualization(FigureCanvas):
-    def __init__(self, data):
+    def __init__(self):
         self.fig = Figure() #figsize=(20,10)) #, dpi=100
         self.axes = self.fig.add_subplot(111)
         super().__init__(self.fig)
@@ -53,7 +53,7 @@ class Visualization(FigureCanvas):
 
         # Data
         self.data = dm.data
-        self.data_frame = data[0:10]
+        self.data_frame = None
         self.frame_size = 10  # TODO: depends on window size
 
         # Control variables
@@ -111,6 +111,8 @@ class Visualization(FigureCanvas):
         return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists
 
     def _init_draw(self):
+        if self.data_frame is None:
+            raise Exception("[Visualization] Init data frame was not set")
         print("_init_func", self.data_frame.Date.iloc[0], self.data_frame.Open.iloc[2] < self.data_frame.Close.iloc[2])
 
         self.axes.cla()

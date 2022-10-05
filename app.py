@@ -16,30 +16,12 @@ from core_simulator import *
 
 ########################################
 
-# Reading from CSV
+# Data
 
-all_data = pd.read_csv('data/EURUSD/EURUSD60.csv', index_col=0, parse_dates=True)
-all_tick_data = pd.read_csv('data/EURUSD/EURUSD1.csv', index_col=0, parse_dates=True)
-
-# all_data.index.name = 'Date'
-# print(daily.shape)
-# print(daily.tail(3))
+data_file = 'data/EURUSD/EURUSD60.csv'
+tick_data_file = 'data/EURUSD/EURUSD1.csv'
 
 ########################################
-
-# Select data you want to use
-data = all_data.loc['2019-1-1 00:00' : '2019-1-7 00:00']
-tick_data = all_tick_data.loc['2019-1-1 00:00' : '2019-1-7 00:00']
-
-# use plain integer as index => in order to remove time gaps and easier plot of indicators
-data = data.reset_index(drop=False)
-tick_data = tick_data.reset_index(drop=False)
-
-# print(data)
-# print(tick_data)
-# exit()
-########################################
-
 
 def indicator_func(data):
     return [data.iloc[0].Close]
@@ -52,7 +34,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         # self.canvas = MplCanvas() -> maybe this is better, and I should send only Canvas to Visualization object ?
-        self.vis = Visualization(data)
+        self.vis = Visualization()
         # self.setCentralWidget(self.vis)
 
         self.comm = Communicate()
@@ -132,9 +114,8 @@ class MainWindow(QMainWindow):
         self.vis.stop()
 
     def _run(self):
-        # sim = Simulator(self.comm, self.vis, 1.2)
-        start_time = data.loc[data['Date'] >= '2019-1-3 00:00'].iloc[0].Date
-        stop_time = data.loc[data['Date'] <= '2019-1-6 00:00'].iloc[-1].Date
+        start_time = pd.Timestamp('2019-1-3 00:00')
+        stop_time = pd.Timestamp('2019-1-6 00:00')
         self.sim.setup_simulator(data_file, start_time, stop_time, interval=0.2, use_ticks=True, tick_data_file=tick_data_file)
         self.sim.add_indicator(indicator_func=indicator_func, init_func=indicator_func)
         self.sim.start()
