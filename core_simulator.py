@@ -2,6 +2,7 @@ import threading
 from time import time, sleep
 from copy import deepcopy
 from math import copysign
+from os.path import exists
 
 import data_manager as dm
 from indicator import SystemIndicator
@@ -79,16 +80,20 @@ class Simulator:
         if self.running:
             print('[Simulator] Cannot apply setup while running')
         else:
-            # All input checks #TODO: check if files exist
+            # All input checks
             self.is_input_valid = False
             if data_file is None or start_time is None or stop_time is None or use_ticks is None:
                 print('[Simulator] Missing some input parameters')
+            elif not exists(data_file):
+                print('[Simulator] Cannot find data file: %s' % data_file)
             elif start_time >= stop_time:
                 print('[Simulator] Start or stop time is invalid')
             elif interval < 0:
                 print('[Simulator] Interval parameter must be a positive number')
             elif use_ticks and tick_data_file is None:
                 print('[Simulator] Missing tick data')
+            elif not exists(tick_data_file):
+                print('[Simulator] Cannot find tick data file: %s' % tick_data_file)
             else:
                 self._load_data(data_file)
                 self._set_start_time(start_time)
