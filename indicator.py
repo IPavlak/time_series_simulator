@@ -20,10 +20,10 @@ class SystemIndicator(DataSourceInteraface):
         self.on_calculate = on_calculate_func
         self.on_init = on_init_function
         self.parameters = parameters
-        self.input_data = dm.data # TODO: refactor names
-        self.data = []
+        self.data = dm.data
         self.data_idx = 0
-        self.last_data_size = 0
+        self.output = []
+        self.last_output_size = 0
         self.init_executed = False
 
     def set_on_calculate_function(self, on_calculate_function: Callable[[Any], List[Number]]):
@@ -40,24 +40,24 @@ class SystemIndicator(DataSourceInteraface):
             print("[SystemIndicator] Initialization called, but init function not provided")
             return
 
-        self.data = np.zeros((self.input_data.shape[0], 1))
-        self.data[:] = np.NaN
+        self.output = np.zeros((self.data.shape[0], 1))
+        self.output[:] = np.NaN
         
         init_start_idx = max(1, init_idx-n)
         for index in range(init_start_idx, init_idx+1):
-            input_data = self.input_data[0:index+1]
+            input_data = self.data[0:index+1]
             # reverse order - first in list is latest data
             input_data.reverse()
-            output_data = self.on_init(input_data)
-            for i in range(len(output_data)):
-                self.data[index-i] = output_data[i]
+            output = self.on_init(input_data)
+            for i in range(len(output)):
+                self.output[index-i] = output[i]
 
         self.data_idx = init_idx
         self.init_executed = True
 
-    def reset_last_data(self, idx):
-        for i in range(idx, idx-self.last_data_size, -1):
-            self.data[i] = np.NaN
+    def reset_last_output(self, idx):
+        for i in range(idx, idx-self.last_output_size, -1):
+            self.output[i] = np.NaN
 
     def calculate(self, framedata):
         if self.on_init is not None and not self.init_executed:
@@ -66,7 +66,7 @@ class SystemIndicator(DataSourceInteraface):
         
         self.data_idx = framedata.core_data_idx
 
-        input_data = self.input_data[0:self.data_idx]
+        input_data = self.data[0:self.data_idx]
 
         # TODO: BENCHMARK
         if framedata.curr_candle is not None:
@@ -79,33 +79,33 @@ class SystemIndicator(DataSourceInteraface):
             input_data = current_candle.append(input_data[::-1], ignore_index=True)
         else:
             # slicing is faster than getting single data frame - flag as dependant on data structure
-            input_data = self.input_data[self.data_idx : self.data_idx+1].append(input_data[::-1], ignore_index=True)
+            input_data = self.data[self.data_idx : self.data_idx+1].append(input_data[::-1], ignore_index=True)
 
         self._calculate(input_data)
    
 
     def _calculate(self, input_data):
         if not self.parameters.get(ParamNames.PERSIST, True):
-            self.reset_last_data(self.data_idx)
+            self.reset_last_output(self.data_idx)
         
-        output_data = self.on_calculate(input_data)
-        for i in range(len(output_data)):
-            self.data[self.data_idx-i] = output_data[i]
+        output = self.on_calculate(input_data)
+        for i in range(len(output)):
+            self.output[self.data_idx-i] = output[i]
         
-        self.last_data_size = len(output_data)
+        self.last_output_size = len(output)
 
 
     def get_data(self, time, n=1) -> list:
-        ''' Overloaded interface function '''
-        last_time = self.input_data.Date[self.data_idx]
+        ''' Overloaded interface function for getting indicator ouput data '''
+        last_time = self.data.Date[self.data_idx]
         step = 0
         if last_time < time: step = 1
         elif last_time > time: step = -1
         data_idx = self.data_idx + step
 
-        while (step > 0 and self.input_data.Date[data_idx] <= time) or \
-              (step < 0 and self.input_data.Date[data_idx] >= time):
+        while (step > 0 and self.data.Date[data_idx] <= time) or \
+              (step < 0 and self.data.Date[data_idx] >= time):
             data_idx += step
         data_idx -= step
 
-        return self.data[data_idx-n+1 : data_idx+1]
+        return self.output[data_idx-n+1 : data_idx+1]
