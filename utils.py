@@ -27,11 +27,11 @@ def get_idx_from_time(data, time, op='EQUAL'):
     op parameter can be EQUAL, GREATER_OR_EQUAL or LESS_OR_EQUAL - to search for appropriate idx
     '''
     if op == 'EQUAL':
-        return data[data['Date'] == time].index.values[0]
+        return data[data['Date'] == time].index[0]
     elif op == 'GREATER_OR_EQUAL':
-        return data[data['Date'] >= time].index.values[0]
+        return data[data['Date'] >= time].index[0]
     elif op == 'LESS_OR_EQUAL':
-        return data[data['Date'] <= time].index.values[-1]
+        return data[data['Date'] <= time].index[-1]
     else:
         raise ValueError('op parameter value must be one of the following: '
         '[\'EQUAL\', \'GREATER_OR_EQUAL\', \'LESS_OR_EQUAL\'')
