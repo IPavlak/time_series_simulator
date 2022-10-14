@@ -15,8 +15,9 @@ class SystemIndicator(DataSourceInteraface):
     ''' System indicator is a wrapper around User indicator which provides all neccessary 
         methods for indicator to be integrated in simulation '''
 
-    def __init__(self, on_calculate_func=None, parameters: Dict = {}, on_init_function=None):
+    def __init__(self, name="indicator", on_calculate_func=None, parameters: Dict = {}, on_init_function=None):
         
+        self.name = name
         self.on_calculate = on_calculate_func
         self.on_init = on_init_function
         self.parameters = parameters
@@ -25,6 +26,13 @@ class SystemIndicator(DataSourceInteraface):
         self.output = []
         self.last_output_size = 0
         self.init_executed = False
+        self.depending_indicators = None
+
+    def __getitem__(self, item):
+        if type(item) != int:
+            print("[{}][SytemIndicator] Unsupported subscript type: {} (only integer is allowed." % (self.name, type(item)))
+        else:
+            return self.output[self.data_idx - item]
 
     def set_on_calculate_function(self, on_calculate_function: Callable[[Any], List[Number]]):
         self.on_calculate = on_calculate_function
@@ -35,9 +43,16 @@ class SystemIndicator(DataSourceInteraface):
     def set_parameters(self, parameters: Dict):
         self.parameters = parameters
 
+    # TODO: Obsidian
+    def set_depending_indicators(self, indicators: Dict):
+        self.depending_indicators = indicators
+        for indicator_name, indicator in self.depending_indicators.items():
+            setattr(self, indicator_name, indicator)
+
+
     def init(self, init_idx, n=100):
         if self.on_init is None:
-            print("[SystemIndicator] Initialization called, but init function not provided")
+            print("[{}][SystemIndicator] Initialization called, but init function not provided" % self.name)
             return
 
         self.output = np.zeros((self.data.shape[0], 1))
@@ -59,32 +74,12 @@ class SystemIndicator(DataSourceInteraface):
         for i in range(idx, idx-self.last_output_size, -1):
             self.output[i] = np.NaN
 
-    def calculate(self, framedata):
+    def calculate(self, input_data, data_idx):
         if self.on_init is not None and not self.init_executed:
-            print("[SystemIndicator] Init function provided but unused, cannot proceed")
+            print("[{}][SystemIndicator] Init function provided but unused, cannot proceed." % self.name)
             return
-        
-        self.data_idx = framedata.core_data_idx
+        self.data_idx = data_idx
 
-        input_data = self.data[0:self.data_idx]
-
-        # TODO: BENCHMARK
-        if framedata.curr_candle is not None:
-            current_candle = pd.DataFrame({'Date':  framedata.curr_candle.Date,
-                                           'Open':  framedata.curr_candle.Open,
-                                           'High':  framedata.curr_candle.High,
-                                           'Low':   framedata.curr_candle.Low,
-                                           'Close': framedata.curr_candle.Close},  index=[0])
-            # add current candle to input data at index=0 and reset indexes
-            input_data = current_candle.append(input_data[::-1], ignore_index=True)
-        else:
-            # slicing is faster than getting single data frame - flag as dependant on data structure
-            input_data = self.data[self.data_idx : self.data_idx+1].append(input_data[::-1], ignore_index=True)
-
-        self._calculate(input_data)
-   
-
-    def _calculate(self, input_data):
         if not self.parameters.get(ParamNames.PERSIST, True):
             self.reset_last_output(self.data_idx)
         

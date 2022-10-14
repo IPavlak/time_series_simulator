@@ -6,6 +6,7 @@ from os.path import exists
 
 import data_manager as dm
 from indicator import SystemIndicator
+from indicator_handler import IndicatorHandler
 from visualizations import Visualization
 from utils import *
 
@@ -29,7 +30,8 @@ class Simulator:
         self.is_input_valid = False
         self.frame_data = FrameData()
 
-        self.indicators = []
+        self.indicator_handler = IndicatorHandler()
+        # TODO: pass indicators to traders
 
         self.sim_thread = threading.Thread(name = 'myDataLoop', target = self.run, daemon = True)
         self.sim_thread.start()
@@ -58,13 +60,13 @@ class Simulator:
     def step_forward(self):
         if not self.running and self.frame_data.time <= self.stop_time:
             self._update_frame_data()
-            self.update_indicators()
+            self.indicator_handler.update(self.frame_data)
             self._draw_frame()
 
     def step_backward(self):
         if not self.running and self.frame_data.time >= self.start_time:
             self._update_frame_data(step=-1)
-            self.update_indicators()
+            self.indicator_handler.update(self.frame_data)
             self._draw_frame()
 
     def reset(self):
@@ -161,7 +163,7 @@ class Simulator:
             # self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
             # self.frame_data.reset = False
 
-            self.update_indicators()
+            self.indicator_handler.update(self.frame_data)
 
             # draw frame
             self._draw_frame()
@@ -205,9 +207,9 @@ class Simulator:
 
         self.frame_data.reset = False
     
-    def update_indicators(self):
-        for indicator in self.indicators:
-                indicator.calculate(self.frame_data)
+    # def update_indicators(self):
+    #     for indicator in self.indicators:
+    #         indicator.calculate(self.frame_data)
 
     def _calc_curr_candle(self, tick_candle, step, new_frame=False):
         if step > 0:
