@@ -1,4 +1,8 @@
 from collections import OrderedDict
+from typing import Dict, Tuple, Type
+from uuid import uuid4
+from importlib import import_module
+from inspect import getmembers, isclass, ismodule
 
 import pandas as pd
 
@@ -13,11 +17,24 @@ class IndicatorHandler:
         self.data_idx = 0
         self.indicators = OrderedDict()
 
-    def add_indicator(self, indicator: SystemIndicator, dependencies, init_frame_idx):
-        # TODO: add all dependencies and initialize them
-        self.indicators[indicator.name] = indicator  #  TODO: use unique ID for each indicator != indicator.name ==> maybe use sortedList instead of SortedDict (we never need to catch indicator by key, only by order of insertion)
-        # TODO: set all depencies to indicator
+    # TODO: check for circular dependencies
+    def add_indicator(self, indicator_name: str, indicator_module: str, indicator_parameters: Dict, init_frame_idx):
+        print(indicator_name, indicator_module)
+        indicator_t, dependencies = self._get_indicator_def(indicator_module)
+
+        depedency_indicators = []
+        for dependency_name, dependency in dependencies.items():
+            # TODO: try catch in case dependency is missing required fields
+            dependency_indicator = self.add_indicator(dependency_name, dependency['indicator'], dependency['parameters'], init_frame_idx)
+            depedency_indicators.append( dependency_indicator )
+
+        indicator = indicator_t(indicator_name, indicator_parameters)
+        indicator.set_depending_indicators(depedency_indicators)
         indicator.init(init_frame_idx)
+
+        self.indicators[str(uuid4())] = indicator
+
+        return indicator
 
     def update(self, framedata):
         self.data_idx = framedata.core_data_idx
@@ -37,4 +54,17 @@ class IndicatorHandler:
             input_data = self.data[self.data_idx : self.data_idx+1].append(input_data[::-1], ignore_index=True)
 
         for indicator in self.indicators.values():
-            indicator.calculate(input_data, self.data_idx)
+            indicator.update(input_data, self.data_idx)
+
+
+    def _get_indicator_def(self, indicator_module_name: str) -> Tuple[Type[SystemIndicator], Dict]:
+        indicator_module = import_module(indicator_module_name) #__import__('indicators', globals(), locals()) #indicator_module_name) #TODO: Obsidian
+        indicator_type = None
+        dependencies = {}
+        for name, value in getmembers(indicator_module):
+            if name == 'dependencies':
+                dependencies = value
+            if isclass(value) and value is not SystemIndicator and issubclass(value, SystemIndicator):
+                indicator_type = value
+
+        return indicator_type, dependencies

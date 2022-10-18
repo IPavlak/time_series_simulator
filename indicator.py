@@ -15,12 +15,10 @@ class SystemIndicator(DataSourceInteraface):
     ''' System indicator is a wrapper around User indicator which provides all neccessary 
         methods for indicator to be integrated in simulation '''
 
-    def __init__(self, name="indicator", on_calculate_func=None, parameters: Dict = {}, on_init_function=None):
+    def __init__(self, name="indicator", parameters: Dict = {}):
         
         self.name = name
-        self.on_calculate = on_calculate_func
-        self.on_init = on_init_function
-        self.parameters = parameters
+        self.set_parameters(parameters)
         self.data = dm.data
         self.data_idx = 0
         self.output = []
@@ -30,29 +28,27 @@ class SystemIndicator(DataSourceInteraface):
 
     def __getitem__(self, item):
         if type(item) != int:
-            print("[{}][SytemIndicator] Unsupported subscript type: {} (only integer is allowed." % (self.name, type(item)))
+            print("[{}][SytemIndicator] Unsupported subscript type: {} (only integer is allowed.".format(self.name, type(item)))
         else:
             return self.output[self.data_idx - item]
 
-    def set_on_calculate_function(self, on_calculate_function: Callable[[Any], List[Number]]):
-        self.on_calculate = on_calculate_function
-
-    def set_on_init_function(self, on_init_function: Callable[[Any], List[Number]]):
-        self.on_init = on_init_function
-
     def set_parameters(self, parameters: Dict):
         self.parameters = parameters
+        for name, value in self.parameters:
+            # TODO: check if param name already exists
+            setattr(self, name, value)
 
     # TODO: Obsidian
-    def set_depending_indicators(self, indicators: Dict):
+    def set_depending_indicators(self, indicators: List):
         self.depending_indicators = indicators
-        for indicator_name, indicator in self.depending_indicators.items():
-            setattr(self, indicator_name, indicator)
+        for indicator in self.depending_indicators:
+            # TODO: check if indicator name already exists
+            setattr(self, indicator.name, indicator)
 
 
     def init(self, init_idx, n=100):
-        if self.on_init is None:
-            print("[{}][SystemIndicator] Initialization called, but init function not provided" % self.name)
+        if not hasattr(self, 'initialize'):
+            print("[{}][SystemIndicator] Initialization called, but init function not provided".format(self.name))
             return
 
         self.output = np.zeros((self.data.shape[0], 1))
@@ -63,7 +59,7 @@ class SystemIndicator(DataSourceInteraface):
             input_data = self.data[0:index+1]
             # reverse order - first in list is latest data
             input_data.reverse()
-            output = self.on_init(input_data)
+            output = self.initialize(input_data)
             for i in range(len(output)):
                 self.output[index-i] = output[i]
 
@@ -74,16 +70,16 @@ class SystemIndicator(DataSourceInteraface):
         for i in range(idx, idx-self.last_output_size, -1):
             self.output[i] = np.NaN
 
-    def calculate(self, input_data, data_idx):
-        if self.on_init is not None and not self.init_executed:
-            print("[{}][SystemIndicator] Init function provided but unused, cannot proceed." % self.name)
+    def update(self, input_data, data_idx):
+        if hasattr(self, 'initialize') and not self.init_executed:
+            print("[{}][SystemIndicator] Init function provided but unused, cannot proceed.".format(self.name))
             return
         self.data_idx = data_idx
 
         if not self.parameters.get(ParamNames.PERSIST, True):
             self.reset_last_output(self.data_idx)
         
-        output = self.on_calculate(input_data)
+        output = self.calculate(input_data)
         for i in range(len(output)):
             self.output[self.data_idx-i] = output[i]
         
@@ -104,3 +100,10 @@ class SystemIndicator(DataSourceInteraface):
         data_idx -= step
 
         return self.output[data_idx-n+1 : data_idx+1]
+
+
+    # User functions - initialize is not obligatory function, if it is not defines it won't be used
+    # def initialize(self):
+    #     pass
+    def calculate(self, data):
+        print("[{}][SystemIndicator] Calculate function not provided, cannot proceed." % self.name)
