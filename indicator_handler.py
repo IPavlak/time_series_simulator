@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from copy import deepcopy
 from typing import Dict, Tuple, Type
 from uuid import uuid4
 from inspect import getmembers, isclass, ismodule
@@ -26,10 +27,15 @@ class IndicatorHandler:
     def add_indicator(self, indicator_name: str, indicator_module: str, indicator_parameters: Dict, init_frame_idx):
         print(indicator_name, indicator_module)
         indicator_def = self._get_indicator_def(indicator_module)
-        # TODO: check for parameters validity
+        default_parameters = deepcopy(indicator_def.parameters_def)
+        
         # update default parameters with given parameters 
         indicator_def.parameters_def.update(indicator_parameters)
         indicator_parameters = indicator_def.parameters_def
+
+        # if number of parameters have increased, that means that some parameters were not declared beforehand (invalid)
+        if len(indicator_parameters) > len(default_parameters):
+            raise ValueError("Invalid parameter: ", set(indicator_parameters) - set(default_parameters))
 
         depedency_indicators = []
         for dependency_name, dependency in indicator_def.dependencies.items():
