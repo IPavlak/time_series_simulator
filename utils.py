@@ -1,3 +1,5 @@
+from importlib import util
+
 class FrameData:
     ''' Index of current candle - core data is data used by core simulator '''
     core_data_idx = 0
@@ -35,3 +37,17 @@ def get_idx_from_time(data, time, op='EQUAL'):
     else:
         raise ValueError('op parameter value must be one of the following: '
         '[\'EQUAL\', \'GREATER_OR_EQUAL\', \'LESS_OR_EQUAL\'')
+
+def import_module(module: str):
+    from os.path import abspath
+
+    if module.endswith('.py'):
+        module = abspath(module)
+        module_name = module.split('/')[-1].rstrip('.py')
+        spec = util.spec_from_file_location(module_name, module)
+    else:
+        spec = util.find_spec(module)
+
+    mod = util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod

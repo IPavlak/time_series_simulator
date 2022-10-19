@@ -34,7 +34,7 @@ class SystemIndicator(DataSourceInteraface):
 
     def set_parameters(self, parameters: Dict):
         self.parameters = parameters
-        for name, value in self.parameters:
+        for name, value in self.parameters.items():
             # TODO: check if param name already exists
             setattr(self, name, value)
 
