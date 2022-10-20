@@ -118,8 +118,8 @@ class Simulator:
                 else:
                     self.vis.set_init_frame(self.frame_data)
                 
-                for indicator in self.indicators:
-                    indicator.init(self.frame_data.core_data_idx)
+                # for indicator in self.indicators:
+                #     indicator.init(self.frame_data.core_data_idx)
 
     def _set_interval(self, interval):
         self.interval = interval
@@ -138,13 +138,11 @@ class Simulator:
         ''' Time should have format yyyy-m[m]-d[d] hh:MM  - or pandas value '''
         self.stop_time = time
 
-    def add_indicator(self, indicator_func, indicator_parameters={}, init_func=None):
-        indicator = SystemIndicator(indicator_func, indicator_parameters, init_func)
-        self.indicators.append(indicator)
-        self.vis.add_plot(indicator)
 
-        if self.is_input_valid:
-            indicator.init(self.frame_data.core_data_idx)
+    def add_indicator(self, indicator_name: str, indicator: str, indicator_parameters={}):
+        ind = self.indicator_handler.add_indicator(indicator_name, indicator, indicator_parameters, \
+                                             init_frame_idx=self.frame_data.core_data_idx)
+        self.vis.add_plot(ind)
 
     def run(self):
         sleep(1.0) # wait for initialization to finish
