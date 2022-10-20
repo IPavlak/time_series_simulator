@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Callable
+from typing import Dict, List
 from numbers import Number
 import numpy as np
 import pandas as pd
@@ -35,7 +35,7 @@ class SystemIndicator(DataSourceInteraface):
     def set_parameters(self, parameters: Dict):
         self.parameters = parameters
         for name, value in self.parameters.items():
-            # TODO: check if param name already exists
+            # TODO: check if param name already exists - hasattr
             setattr(self, name, value)
 
     # TODO: Obsidian
@@ -47,10 +47,6 @@ class SystemIndicator(DataSourceInteraface):
 
 
     def init(self, init_idx, n=100):
-        if not hasattr(self, 'initialize'):
-            print("[{}][SystemIndicator] Initialization called, but init function not provided".format(self.name))
-            return
-
         self.output = np.zeros((self.data.shape[0], 1))
         self.output[:] = np.NaN
         
@@ -71,9 +67,6 @@ class SystemIndicator(DataSourceInteraface):
             self.output[i] = np.NaN
 
     def update(self, input_data, data_idx):
-        if hasattr(self, 'initialize') and not self.init_executed:
-            print("[{}][SystemIndicator] Init function provided but unused, cannot proceed.".format(self.name))
-            return
         self.data_idx = data_idx
 
         if not self.parameters.get(ParamNames.PERSIST, True):
@@ -102,8 +95,9 @@ class SystemIndicator(DataSourceInteraface):
         return self.output[data_idx-n+1 : data_idx+1]
 
 
-    # User functions - initialize is not obligatory function, if it is not defines it won't be used
-    # def initialize(self):
-    #     pass
-    def calculate(self, data):
+    # User functions - initialize is not obligatory function, if it is not defined default will be used
+    def initialize(self, data) -> List[Number]:
+        return []
+    
+    def calculate(self, data) -> List[Number]:
         print("[{}][SystemIndicator] Calculate function not provided, cannot proceed." % self.name)
