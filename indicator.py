@@ -7,7 +7,7 @@ import data_manager as dm
 from visualizations import DataSourceInteraface
 from utils import *
 
-class ParamNames:
+class CommonParams:
     # PRICE_TYPE = 'Price Type'
     PERSIST = 'Persist'
 
@@ -23,7 +23,6 @@ class SystemIndicator(DataSourceInteraface):
         self.data_idx = 0
         self.output = []
         self.last_output_size = 0
-        self.init_executed = False
         self.depending_indicators = None
 
     def __getitem__(self, item):
@@ -60,7 +59,6 @@ class SystemIndicator(DataSourceInteraface):
                 self.output[index-i] = output[i]
 
         self.data_idx = init_idx
-        self.init_executed = True
 
     def reset_last_output(self, idx):
         for i in range(idx, idx-self.last_output_size, -1):
@@ -69,7 +67,7 @@ class SystemIndicator(DataSourceInteraface):
     def update(self, input_data, data_idx):
         self.data_idx = data_idx
 
-        if not self.parameters.get(ParamNames.PERSIST, True):
+        if not self.parameters.get(CommonParams.PERSIST, True):
             self.reset_last_output(self.data_idx)
         
         output = self.calculate(input_data)

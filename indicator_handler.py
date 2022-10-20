@@ -1,8 +1,8 @@
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Dict, Tuple, Type
+from typing import Dict
 from uuid import uuid4
-from inspect import getmembers, isclass, ismodule
+from inspect import getmembers, isclass
 
 import pandas as pd
 
@@ -25,7 +25,8 @@ class IndicatorHandler:
 
     # TODO: check for circular dependencies
     def add_indicator(self, indicator_name: str, indicator_module: str, indicator_parameters: Dict, init_frame_idx):
-        print(indicator_name, indicator_module)
+        print("[IndicatorHandler] Adding indicator '{}' from {}".format(indicator_name, indicator_module))
+
         indicator_def = self._get_indicator_def(indicator_module)
         default_parameters = deepcopy(indicator_def.parameters_def)
         
@@ -35,7 +36,7 @@ class IndicatorHandler:
 
         # if number of parameters have increased, that means that some parameters were not declared beforehand (invalid)
         if len(indicator_parameters) > len(default_parameters):
-            raise ValueError("Invalid parameter: ", set(indicator_parameters) - set(default_parameters))
+            raise ValueError("[IndicatorHandler] Invalid parameters: ", set(indicator_parameters) - set(default_parameters))
 
         depedency_indicators = []
         for dependency_name, dependency in indicator_def.dependencies.items():
