@@ -8,8 +8,14 @@ from visualizations import DataSourceInteraface
 from utils import *
 
 class CommonParams:
+    class VisualizationParams:
+        TYPE = 'Line'
+        COLOR = 'Blue'
+
     # PRICE_TYPE = 'Price Type'
-    PERSIST = 'Persist'
+    PERSIST = True
+    visualization = VisualizationParams()
+
 
 class SystemIndicator(DataSourceInteraface):
     ''' System indicator is a wrapper around User indicator which provides all neccessary 
@@ -18,7 +24,8 @@ class SystemIndicator(DataSourceInteraface):
     def __init__(self, name="indicator", parameters: Dict = {}):
         
         self.name = name
-        self.set_parameters(parameters)
+        self.parameters = CommonParams()
+        self.set_user_parameters(parameters)
         self.data = dm.data
         self.data_idx = 0
         self.output = []
@@ -27,13 +34,14 @@ class SystemIndicator(DataSourceInteraface):
 
     def __getitem__(self, item):
         if type(item) != int:
-            print("[{}][SytemIndicator] Unsupported subscript type: {} (only integer is allowed.".format(self.name, type(item)))
+            print("[{}][SytemIndicator] Unsupported subscript type: {} (only integer is allowed).".format(self.name, type(item)))
         else:
             return self.output[self.data_idx - item]
 
-    def set_parameters(self, parameters: Dict):
-        self.parameters = parameters
-        for name, value in self.parameters.items():
+    def set_user_parameters(self, parameters: Dict):
+        update_from_dict(self.parameters, parameters)
+        # TODO: remove params that are in CommonParams
+        for name, value in parameters.items():
             # TODO: check if param name already exists - hasattr
             setattr(self, name, value)
 
@@ -67,7 +75,7 @@ class SystemIndicator(DataSourceInteraface):
     def update(self, input_data, data_idx):
         self.data_idx = data_idx
 
-        if not self.parameters.get(CommonParams.PERSIST, True):
+        if not self.parameters.PERSIST:
             self.reset_last_output(self.data_idx)
         
         output = self.calculate(input_data)
