@@ -23,9 +23,9 @@ class SystemIndicator(DataSourceInteraface):
 
     def __init__(self, name="indicator", parameters: Dict = {}):
         
-        self.name = name
         self.parameters = CommonParams()
         self.set_user_parameters(parameters)
+        self.name = name
         self.data = dm.data
         self.data_idx = 0
         self.output = []
@@ -40,9 +40,8 @@ class SystemIndicator(DataSourceInteraface):
 
     def set_user_parameters(self, parameters: Dict):
         update_from_dict(self.parameters, parameters)
-        # TODO: remove params that are in CommonParams
         for name, value in parameters.items():
-            # TODO: check if param name already exists - hasattr
+            # TODO: check if param name already exists - hasattr, or is in CommonParams
             setattr(self, name, value)
 
     # TODO: Obsidian
