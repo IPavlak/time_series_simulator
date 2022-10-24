@@ -1,3 +1,5 @@
+from importlib import util
+
 class FrameData:
     ''' Index of current candle - core data is data used by core simulator '''
     core_data_idx = 0
@@ -35,3 +37,41 @@ def get_idx_from_time(data, time, op='EQUAL'):
     else:
         raise ValueError('op parameter value must be one of the following: '
         '[\'EQUAL\', \'GREATER_OR_EQUAL\', \'LESS_OR_EQUAL\'')
+
+def import_module(module: str):
+    from os.path import abspath
+
+    if module.endswith('.py'):
+        module = abspath(module)
+        module_name = module.split('/')[-1].rstrip('.py')
+        spec = util.spec_from_file_location(module_name, module)
+    else:
+        spec = util.find_spec(module)
+
+    mod = util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+def to_dict(obj):
+        d = {}
+        for member in dir(obj):
+            if not callable(getattr(obj, member)) and not member.startswith('__'):
+                value = getattr(obj, member)
+                if isinstance(value, dict):
+                    d[member] = to_dict(value)
+                else:
+                    d[member] = value
+        return d
+    
+def update_from_dict(obj, d):
+    for key, value in d.items():
+        if hasattr(obj, key):
+            member = getattr(obj, key)
+            if isinstance(member, dict):
+                member.update(value)
+            elif member.__class__.__module__ == 'builtins':
+                setattr(obj, key, value)
+            elif isinstance(value, dict):
+                update_from_dict(member, value)
+            else:
+                raise ValueError("Cannot parse from '{}' to '{}' (field name: '{}')".format(type(value), member, key))

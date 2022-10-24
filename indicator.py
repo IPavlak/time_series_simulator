@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Callable
+from typing import Dict, List
 from numbers import Number
 import numpy as np
 import pandas as pd
@@ -7,39 +7,52 @@ import data_manager as dm
 from visualizations import DataSourceInteraface
 from utils import *
 
-class ParamNames:
+class CommonParams:
+    class VisualizationParams:
+        TYPE = 'Line'
+        COLOR = 'Blue'
+
     # PRICE_TYPE = 'Price Type'
-    PERSIST = 'Persist'
+    PERSIST = True
+    visualization = VisualizationParams()
+
 
 class SystemIndicator(DataSourceInteraface):
     ''' System indicator is a wrapper around User indicator which provides all neccessary 
         methods for indicator to be integrated in simulation '''
 
-    def __init__(self, on_calculate_func=None, parameters: Dict = {}, on_init_function=None):
+    def __init__(self, name="indicator", parameters: Dict = {}):
         
-        self.on_calculate = on_calculate_func
-        self.on_init = on_init_function
-        self.parameters = parameters
+        self.parameters = CommonParams()
+        self.set_user_parameters(parameters)
+        self.name = name
         self.data = dm.data
         self.data_idx = 0
         self.output = []
         self.last_output_size = 0
-        self.init_executed = False
+        self.depending_indicators = None
 
-    def set_on_calculate_function(self, on_calculate_function: Callable[[Any], List[Number]]):
-        self.on_calculate = on_calculate_function
+    def __getitem__(self, item):
+        if type(item) != int:
+            print("[{}][SytemIndicator] Unsupported subscript type: {} (only integer is allowed).".format(self.name, type(item)))
+        else:
+            return self.output[self.data_idx - item]
 
-    def set_on_init_function(self, on_init_function: Callable[[Any], List[Number]]):
-        self.on_init = on_init_function
+    def set_user_parameters(self, parameters: Dict):
+        update_from_dict(self.parameters, parameters)
+        for name, value in parameters.items():
+            # TODO: check if param name already exists - hasattr, or is in CommonParams
+            setattr(self, name, value)
 
-    def set_parameters(self, parameters: Dict):
-        self.parameters = parameters
+    # TODO: Obsidian
+    def set_depending_indicators(self, indicators: List):
+        self.depending_indicators = indicators
+        for indicator in self.depending_indicators:
+            # TODO: check if indicator name already exists
+            setattr(self, indicator.name, indicator)
+
 
     def init(self, init_idx, n=100):
-        if self.on_init is None:
-            print("[SystemIndicator] Initialization called, but init function not provided")
-            return
-
         self.output = np.zeros((self.data.shape[0], 1))
         self.output[:] = np.NaN
         
@@ -48,47 +61,23 @@ class SystemIndicator(DataSourceInteraface):
             input_data = self.data[0:index+1]
             # reverse order - first in list is latest data
             input_data.reverse()
-            output = self.on_init(input_data)
+            output = self.initialize(input_data)
             for i in range(len(output)):
                 self.output[index-i] = output[i]
 
         self.data_idx = init_idx
-        self.init_executed = True
 
     def reset_last_output(self, idx):
         for i in range(idx, idx-self.last_output_size, -1):
             self.output[i] = np.NaN
 
-    def calculate(self, framedata):
-        if self.on_init is not None and not self.init_executed:
-            print("[SystemIndicator] Init function provided but unused, cannot proceed")
-            return
-        
-        self.data_idx = framedata.core_data_idx
+    def update(self, input_data, data_idx):
+        self.data_idx = data_idx
 
-        input_data = self.data[0:self.data_idx]
-
-        # TODO: BENCHMARK
-        if framedata.curr_candle is not None:
-            current_candle = pd.DataFrame({'Date':  framedata.curr_candle.Date,
-                                           'Open':  framedata.curr_candle.Open,
-                                           'High':  framedata.curr_candle.High,
-                                           'Low':   framedata.curr_candle.Low,
-                                           'Close': framedata.curr_candle.Close},  index=[0])
-            # add current candle to input data at index=0 and reset indexes
-            input_data = current_candle.append(input_data[::-1], ignore_index=True)
-        else:
-            # slicing is faster than getting single data frame - flag as dependant on data structure
-            input_data = self.data[self.data_idx : self.data_idx+1].append(input_data[::-1], ignore_index=True)
-
-        self._calculate(input_data)
-   
-
-    def _calculate(self, input_data):
-        if not self.parameters.get(ParamNames.PERSIST, True):
+        if not self.parameters.PERSIST:
             self.reset_last_output(self.data_idx)
         
-        output = self.on_calculate(input_data)
+        output = self.calculate(input_data)
         for i in range(len(output)):
             self.output[self.data_idx-i] = output[i]
         
@@ -109,3 +98,11 @@ class SystemIndicator(DataSourceInteraface):
         data_idx -= step
 
         return self.output[data_idx-n+1 : data_idx+1]
+
+
+    # User functions - initialize is not obligatory function, if it is not defined default will be used
+    def initialize(self, data) -> List[Number]:
+        return []
+    
+    def calculate(self, data) -> List[Number]:
+        print("[{}][SystemIndicator] Calculate function not provided, cannot proceed." % self.name)
