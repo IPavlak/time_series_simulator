@@ -33,12 +33,13 @@ class OrderStatus(Enum):
     PENDING = 0
     ACTIVE = 1
     CLOSED = 2
+    DELETED = 3
 
 # TODO: Obsidian
 class Order:
     id = -1
     type = OrderType(-1)
-    price = 0.0
+    open_price = 0.0
     stop_loss = 0.0
     take_profit = 0.0
     open_time = None
@@ -48,7 +49,7 @@ class Order:
 
     @property
     def profit(self):
-        return self.close_price - self.price
+        return self.close_price - self.open_price
 
 class SystemTrader(DataSourceInteraface):
     ''' System indicator is a wrapper around User indicator which provides all neccessary 
@@ -109,22 +110,34 @@ class SystemTrader(DataSourceInteraface):
         order.open_time = self.current_time
         
         if order_type == OrderType.BUY:
-            order.price = self.current_price + self.spread
+            order.open_price = self.current_price + self.spread
             order.status = OrderStatus.ACTIVE
         elif order_type == OrderType.SELL:
-            order.price = self.current_price - self.spread
+            order.open_price = self.current_price - self.spread
             order.status = OrderStatus.ACTIVE
         else:
             order.status = OrderStatus.PENDING
-            order.price = strike_price
+            order.open_price = strike_price
 
         self.orders[order.id] = order
         return deepcopy(order)
 
-    # def close_order(self, id):
-    #     order = self.orders[id]
-    #     if order.status == OrderStatus.PENDING:
-    #         pass
+    def close_order(self, id):
+        order = self.orders[id]
+        if order.status == OrderStatus.UNINITIALIZED:
+            print("[{}][SystemTrader] Trying to close uninitialized order: id='{}'".format(self.name, id))
+        elif order.status == OrderStatus.DELETED:
+             print("[{}][SystemTrader] Trying to close deleted order: id='{}'".format(self.name, id))
+        elif order.status == OrderStatus.CLOSED:
+            print("[{}][SystemTrader] Trying to close already closed order: id='{}'".format(self.name, id))
+        elif order.status == OrderStatus.PENDING:
+            order.close_price = order.open_price
+            order.close_time = self.current_time
+            order.status = OrderStatus.DELETED
+        else:
+            order.close_price = self.current_price
+            order.close_time = self.current_time
+            order.status = OrderStatus.CLOSED
 
     def _update_orders(self):
         for order in self.active_orders:
@@ -175,9 +188,9 @@ class SystemTrader(DataSourceInteraface):
 
     def _is_strike_price_reached(self, price, order):
         if order.type == OrderType.BUY_LIMIT or order.type == OrderType.BUY_STOP:
-            return price <= order.price - self.spread
+            return price <= order.open_price - self.spread
         else:
-            return price >= order.price + self.spread
+            return price >= order.open_price + self.spread
 
     # TODO: when needed
     def init(self, init_idx, n=1):
