@@ -1,6 +1,7 @@
 from copy import deepcopy
 from typing import Dict, List
 from numbers import Number
+from functools import total_ordering
 from enum import Enum
 from uuid import uuid4
 import numpy as np
@@ -36,6 +37,7 @@ class OrderStatus(Enum):
     DELETED = 3
 
 # TODO: Obsidian
+@total_ordering
 class Order:
     id = -1
     type = OrderType(-1)
@@ -50,6 +52,11 @@ class Order:
     @property
     def profit(self):
         return self.close_price - self.open_price
+
+    def __lt__(self, other):
+        return self.close_price < other.close_price
+    def __eq__(self, other):
+        return self.id == other.id
 
 class SystemTrader(DataSourceInteraface):
     ''' System indicator is a wrapper around User indicator which provides all neccessary 
