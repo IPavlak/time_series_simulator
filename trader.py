@@ -223,28 +223,40 @@ class SystemTrader(DataSourceInteraface):
         self.data_idx = init_idx
 
     def update(self, input_data, data_idx):
-        self.data_idx = data_idx
-        self.current_price = input_data.Close[0]
-        self.current_time = input_data.Time[0]
-        self._update_orders()
-        self.calculate(input_data)
+        time = input_data.Date[0]
+        if time > self.current_time:
+            self.data_idx = data_idx
+            self.current_price = input_data.Close[0]
+            self.current_time = time
+            self._update_orders()
+            self.calculate(input_data)
 
 
-    # TODO:
+    # TODO: output should be able to have data (multiple orders), for now only 1 (last active)
     def get_data(self, time, n=1) -> list:
         ''' Overloaded interface function for getting reader ouput data - data for visualization'''
-        last_time = self.data.Date[self.data_idx]
-        step = 0
-        if last_time < time: step = 1
-        elif last_time > time: step = -1
-        data_idx = self.data_idx + step
+        output = [np.nan for i in range(n)]
 
-        while (step > 0 and self.data.Date[data_idx] <= time) or \
-              (step < 0 and self.data.Date[data_idx] >= time):
-            data_idx += step
-        data_idx -= step
+        last_order = self.get_last_order()
+        if last_order.status == OrderStatus.UNINITIALIZED:
+            return output
 
-        return self.output[data_idx-n+1 : data_idx+1]
+        last_price = self.current_price if last_order.status == OrderStatus.ACTIVE else last_order.close_price
+        last_time = self.current_time if last_order.status == OrderStatus.ACTIVE else last_order.close_time
+
+        data_idx = get_idx_from_time(time, self.data, self.data_idx)
+        time_unit = pd.Timedelta(self.data.Date[data_idx] - self.data.Date[data_idx-1]).total_seconds()
+        open_idx = int(pd.Timedelta(self.data.Date[data_idx] - last_order.open_time).total_seconds() / time_unit) # best guess
+        open_idx = get_idx_from_time(last_order.open_time, self.data, open_idx)
+        close_idx = int(pd.Timedelta(self.data.Date[data_idx] - last_order.close_time).total_seconds() / time_unit) # best guess
+        close_idx = get_idx_from_time(last_order.close_time, self.data, close_idx)
+        n = close_idx - open_idx + 1
+
+        for idx in range(data_idx, data_idx-n, -1):
+            if open_idx <= idx <= close_idx:
+                output[idx - (data_idx-n+1)] = last_order.open_price + (idx - open_idx)/n * (last_price - last_order.open_price)
+
+        return output
 
 
     # User functions - initialize is not obligatory function, if it is not defined default will be used
