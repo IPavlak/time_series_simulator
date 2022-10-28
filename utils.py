@@ -38,7 +38,7 @@ def get_idx_from_time(data, time, op='EQUAL'):
         raise ValueError('op parameter value must be one of the following: '
         '[\'EQUAL\', \'GREATER_OR_EQUAL\', \'LESS_OR_EQUAL\'')
 
-def get_idx_from_time(time, data, curr_idx):
+def get_idx_from_time_and_hint(time, data, curr_idx):
     last_time = data.Date[curr_idx]
     step = 0
     if last_time < time: step = 1

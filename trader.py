@@ -244,12 +244,12 @@ class SystemTrader(DataSourceInteraface):
         last_price = self.current_price if last_order.status == OrderStatus.ACTIVE else last_order.close_price
         last_time = self.current_time if last_order.status == OrderStatus.ACTIVE else last_order.close_time
 
-        data_idx = get_idx_from_time(time, self.data, self.data_idx)
+        data_idx = get_idx_from_time_and_hint(time, self.data, self.data_idx)
         time_unit = pd.Timedelta(self.data.Date[data_idx] - self.data.Date[data_idx-1]).total_seconds()
         open_idx = int(pd.Timedelta(self.data.Date[data_idx] - last_order.open_time).total_seconds() / time_unit) # best guess
-        open_idx = get_idx_from_time(last_order.open_time, self.data, open_idx)
+        open_idx = get_idx_from_time_and_hint(last_order.open_time, self.data, open_idx)
         close_idx = int(pd.Timedelta(self.data.Date[data_idx] - last_order.close_time).total_seconds() / time_unit) # best guess
-        close_idx = get_idx_from_time(last_order.close_time, self.data, close_idx)
+        close_idx = get_idx_from_time_and_hint(last_order.close_time, self.data, close_idx)
         n = close_idx - open_idx + 1
 
         for idx in range(data_idx, data_idx-n, -1):
