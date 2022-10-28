@@ -199,6 +199,18 @@ class SystemTrader(DataSourceInteraface):
         else:
             return price >= order.open_price + self.spread
 
+    def get_last_order(self):
+        time = None
+        last_order = Order()
+        for order in self.orders:
+            if time is not None and order.status == OrderStatus.CLOSED and time < order.close_time:
+                time = order.close_time
+                last_order = order
+            elif time is not None and order.status == OrderStatus.ACTIVE and time < order.open_time:
+                time = order.open_time
+                last_order = order
+        return last_order
+
     # TODO: when needed
     def init(self, init_idx, n=1):
         init_start_idx = max(1, init_idx-n)
