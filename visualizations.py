@@ -36,9 +36,14 @@ class Visualization(FigureCanvas):
         self.axes = self.fig.add_subplot(111)
         super().__init__(self.fig)
 
-        #define width of candlestick elements
-        self.width_oc = 0.8 #.02
-        self.width_hl = 0.1 #.002
+        self.fig.subplots_adjust(left=0.05, right=0.98, bottom=0.0, top=0.89)
+        fig_size = self.fig.get_size_inches() * self.fig.dpi    # size in pixels
+        self.bars_per_inch = 3
+        self.xy_pos_text = self.fig.text(0.8, 0.9, "tu sam", fontsize=12)
+
+        # define width of candlestick elements
+        self.width_oc = 0.8 # absolute numbers because integers are used for x-axis, so 1 bar = 1 on x-axis
+        self.width_hl = 0.1
 
         # define colors to use
         self.color_up = 'green'
@@ -46,20 +51,20 @@ class Visualization(FigureCanvas):
 
         # define x,y margins
         self.x_margin = self.width_oc
-        self.y_margin = 0.1
+        self.y_margin = 0.05
 
         # define how often to show x label - i.e. 4 means every fourth candle will have x label
-        self.x_tick_rate = 4
+        self.x_tick_rate = 10
 
         # Data
         self.data = dm.data
         self.data_frame = None
-        self.frame_size = 10  # TODO: depends on window size
+        self.frame_size = int( self.fig.get_size_inches()[0] * self.bars_per_inch )
 
         # Control variables
-        self.frame_idx = 9 #last frame idx
-        self.make_update = False
-        self.running = True
+        self.frame_idx = 10
+
+
 
         # User defined plots
         self.plots = []
@@ -102,8 +107,8 @@ class Visualization(FigureCanvas):
 
         # draw periodically to update y-labels and x-labels
         
-        self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
-        self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
+        self._set_plot_limits()
+
         # self.fig.canvas.draw()
 
         print("draw_func", framedata.core_data_idx)
@@ -114,6 +119,9 @@ class Visualization(FigureCanvas):
         if self.data_frame is None:
             raise Exception("[Visualization] Init data frame was not set")
         print("_init_func", self.data_frame.Date.iloc[0], self.data_frame.Open.iloc[2] < self.data_frame.Close.iloc[2])
+
+        self.frame_size = int( self.fig.get_size_inches()[0] * self.bars_per_inch ) 
+        self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
 
         self.axes.cla()
         self._setup_x_labels()
@@ -140,6 +148,7 @@ class Visualization(FigureCanvas):
             user_plot_artists.append(plot_ref)
 
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
+        self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
 
         return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists
 
@@ -209,7 +218,10 @@ class Visualization(FigureCanvas):
             rect_oc.set_color(self.color_down)
             rect_hl.set_color(self.color_down)
 
-        
+    def _set_plot_limits(self):
+        y_margin_abs = (max(self.data_frame.High) - min(self.data_frame.Low)) * self.y_margin
+        self.axes.set_ylim(min(self.data_frame.Low)-y_margin_abs, max(self.data_frame.High)+y_margin_abs)
+        self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
 
 if __name__ == '__main__':
     vis = Visualization(None)

@@ -42,6 +42,8 @@ class MainWindow(QMainWindow):
 
         self.sim = Simulator(self.comm, self.vis, 1.2)
 
+        # set size
+        self.showMaximized()
 
         widget = QWidget(self)
         vlay = QVBoxLayout(widget)
@@ -85,8 +87,8 @@ class MainWindow(QMainWindow):
         vlay.addLayout(hlay)
         vlay.addWidget(self.vis)
         self.setCentralWidget(widget)
-        
 
+        
         # myDataLoop = threading.Thread(name = 'myDataLoop', target = self.run, daemon = True, args=(self.vis.start_sim, self.vis.stop_sim))
         # myDataLoop.start()
         self._run()
