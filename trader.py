@@ -59,10 +59,10 @@ class Order:
         return self.id == other.id
 
 class SystemTrader(DataSourceInteraface):
-    ''' System indicator is a wrapper around User indicator which provides all neccessary 
-        methods for indicator to be integrated in simulation '''
+    ''' System trader is a wrapper around User trader which provides all neccessary 
+        methods for trader to be integrated in simulation '''
 
-    def __init__(self, name="indicator", parameters: Dict = {}):
+    def __init__(self, name="trader", parameters: Dict = {}):
         
         self.parameters = CommonParams()
         self.set_parameters(parameters)
@@ -78,15 +78,15 @@ class SystemTrader(DataSourceInteraface):
 
     @property
     def closed_orders(self):
-        return {id: order for id, order in self.orders.items() if order.status == OrderStatus.CLOSED}
+        return [order for order in self.orders.values() if order.status == OrderStatus.CLOSED]
     
     @property
     def active_orders(self):
-        return {id: order for id, order in self.orders.items() if order.status == OrderStatus.ACTIVE}
+        return [order for order in self.orders.values() if order.status == OrderStatus.ACTIVE]
 
     @property
     def pending_orders(self):
-        return {id: order for id, order in self.orders.items() if order.status == OrderStatus.PENDING}
+        return [order for order in self.orders.values() if order.status == OrderStatus.PENDING]
 
     def set_parameters(self, parameters: Dict):
         update_from_dict(self.parameters, parameters)
@@ -202,11 +202,11 @@ class SystemTrader(DataSourceInteraface):
     def get_last_order(self):
         time = None
         last_order = Order()
-        for order in self.orders:
-            if time is not None and order.status == OrderStatus.CLOSED and time < order.close_time:
+        for order in self.orders.values():
+            if time is None or order.status == OrderStatus.CLOSED and time > order.close_time:
                 time = order.close_time
                 last_order = order
-            elif time is not None and order.status == OrderStatus.ACTIVE and time < order.open_time:
+            elif time is None or order.status == OrderStatus.ACTIVE and time > order.open_time:
                 time = order.open_time
                 last_order = order
         return last_order
@@ -224,7 +224,7 @@ class SystemTrader(DataSourceInteraface):
 
     def update(self, input_data, data_idx):
         time = input_data.Date[0]
-        if time > self.current_time:
+        if self.current_time is None or time > self.current_time:
             self.data_idx = data_idx
             self.current_price = input_data.Close[0]
             self.current_time = time
@@ -246,15 +246,15 @@ class SystemTrader(DataSourceInteraface):
 
         data_idx = get_idx_from_time_and_hint(time, self.data, self.data_idx)
         time_unit = pd.Timedelta(self.data.Date[data_idx] - self.data.Date[data_idx-1]).total_seconds()
-        open_idx = int(pd.Timedelta(self.data.Date[data_idx] - last_order.open_time).total_seconds() / time_unit) # best guess
+        open_idx = self.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - last_order.open_time).total_seconds() / time_unit) # best guess
         open_idx = get_idx_from_time_and_hint(last_order.open_time, self.data, open_idx)
-        close_idx = int(pd.Timedelta(self.data.Date[data_idx] - last_order.close_time).total_seconds() / time_unit) # best guess
-        close_idx = get_idx_from_time_and_hint(last_order.close_time, self.data, close_idx)
-        n = close_idx - open_idx + 1
+        close_idx = self.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - last_time).total_seconds() / time_unit) # best guess
+        close_idx = get_idx_from_time_and_hint(last_time, self.data, close_idx)
+        N = close_idx - open_idx if close_idx > open_idx else close_idx - open_idx + 1
 
-        for idx in range(data_idx, data_idx-n, -1):
+        for idx in range(data_idx-n+1, data_idx+1):
             if open_idx <= idx <= close_idx:
-                output[idx - (data_idx-n+1)] = last_order.open_price + (idx - open_idx)/n * (last_price - last_order.open_price)
+                output[idx - (data_idx-n+1)] = last_order.open_price + (idx - open_idx)/N * (last_price - last_order.open_price)
 
         return output
 
@@ -263,5 +263,5 @@ class SystemTrader(DataSourceInteraface):
     def initialize(self, data):
         pass
     
-    def calculate(self, data) -> List[Number]:
-        print("[{}][SystemTrader] Calculate function not provided, cannot proceed." % self.name)
+    def calculate(self, data):
+        pass
