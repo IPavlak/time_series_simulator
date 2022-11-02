@@ -5,8 +5,8 @@ from math import copysign
 from os.path import exists
 
 import data_manager as dm
-from indicator import SystemIndicator
 from indicator_handler import IndicatorHandler
+from trader_handler import TraderHandler
 from visualizations import Visualization
 from utils import *
 
@@ -31,7 +31,7 @@ class Simulator:
         self.frame_data = FrameData()
 
         self.indicator_handler = IndicatorHandler()
-        # TODO: pass indicators to traders
+        self.trader_handler = TraderHandler(self.indicator_handler)
 
         self.sim_thread = threading.Thread(name = 'myDataLoop', target = self.run, daemon = True)
         self.sim_thread.start()
@@ -61,12 +61,14 @@ class Simulator:
         if not self.running and self.frame_data.time <= self.stop_time:
             self._update_frame_data()
             self.indicator_handler.update(self.frame_data)
+            self.trader_handler.update(self.frame_data)
             self._draw_frame()
 
     def step_backward(self):
         if not self.running and self.frame_data.time >= self.start_time:
             self._update_frame_data(step=-1)
             self.indicator_handler.update(self.frame_data)
+            self.trader_handler.update(self.frame_data)
             self._draw_frame()
 
     def reset(self):
@@ -141,8 +143,13 @@ class Simulator:
 
     def add_indicator(self, indicator_name: str, indicator: str, indicator_parameters={}):
         ind = self.indicator_handler.add_indicator(indicator_name, indicator, indicator_parameters, \
-                                             init_frame_idx=self.frame_data.core_data_idx)
+                                                   init_frame_idx=self.frame_data.core_data_idx)
         self.vis.add_plot(ind)
+    
+    def add_trader(self, trader_name: str, trader: str, trader_parameters={}):
+        trader = self.trader_handler.add_trader(trader_name, trader, trader_parameters, \
+                                                init_frame_idx=self.frame_data.core_data_idx)
+        self.vis.add_plot(trader)
 
     def run(self):
         sleep(1.0) # wait for initialization to finish
@@ -162,6 +169,7 @@ class Simulator:
             # self.frame_data.reset = False
 
             self.indicator_handler.update(self.frame_data)
+            self.trader_handler.update(self.frame_data)
 
             # draw frame
             self._draw_frame()

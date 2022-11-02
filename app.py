@@ -118,7 +118,8 @@ class MainWindow(QMainWindow):
         stop_time = pd.Timestamp('2019-1-6 00:00')
         self.sim.setup_simulator(data_file, start_time, stop_time, interval=0.2, use_ticks=True, tick_data_file=tick_data_file)
         self.sim.add_indicator(indicator_name='indicator_ex1', indicator='indicators/indicator_example1.py')
-        self.sim.start()
+        self.sim.add_trader(trader_name='trader_ex1', trader='traders/trader_example1.py')
+        # self.sim.start()
 
 ''' End Class'''
 
