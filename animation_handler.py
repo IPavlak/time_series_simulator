@@ -126,3 +126,26 @@ class AnimationHandler(animation.Animation):
         ''' Use the generating function to generate a new frame sequence '''
         # Since framedata will be passed through function call this is not used
         return lambda: iter(range(100))
+
+
+    def _blit_draw(self, artists):
+        # Handles blitted drawing, which renders only the artists given instead
+        # of the entire figure.
+        updated_ax = {a.axes for a in artists}
+        # Enumerate artists to cache axes' backgrounds. We do not draw
+        # artists yet to not cache foreground from plots with shared axes
+        for ax in updated_ax:
+            # If we haven't cached the background for the current view of this
+            # axes object, do so now. This might not always be reliable, but
+            # it's an attempt to automate the process.
+            cur_view = ax._get_view()
+            view, bg = self._blit_cache.get(ax, (object(), None))
+            if cur_view != view:
+                self._blit_cache[ax] = (
+                    cur_view, ax.figure.canvas.copy_from_bbox(ax.get_figure().bbox))    # changed this line to support blitting x and y labels
+        # Make a separate pass to draw foreground.
+        for a in artists:
+            a.axes.draw_artist(a)
+        # After rendering all the needed artists, blit each axes individually.
+        for ax in updated_ax:
+            ax.figure.canvas.blit(ax.clipbox)       # changed this line to support blitting x and y labels

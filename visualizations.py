@@ -104,16 +104,16 @@ class Visualization(FigureCanvas):
             print("draw tick", framedata.time, framedata.curr_candle.Date)
             return [self.bars_oc.patches[-1], self.bars_hl.patches[-1]] + user_plot_artists
 
-
-        # draw periodically to update y-labels and x-labels
         
         self._set_plot_limits()
 
-        # self.fig.canvas.draw()
+        # if redraw:
+        #     self.fig.canvas.draw()
+        
 
         print("draw_func", framedata.core_data_idx)
         print("draw time", time()-start)
-        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists
+        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists + [self.axes.get_xaxis(), self.axes.get_yaxis()]
 
     def _init_draw(self):
         if self.data_frame is None:
