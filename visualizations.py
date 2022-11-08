@@ -102,7 +102,7 @@ class Visualization(FigureCanvas):
             plot.set_data(self.data_frame.index, data_source.get_data(self.data.Date[self.frame_idx], self.frame_size)) # NaN for not existing values
             user_plot_artists.append(plot)
 
-        # Candles
+        # Candles - TODO: optimize
         if framedata.curr_candle is None or new_frame:
             self._draw_candles(self.data_frame)
 
@@ -159,7 +159,7 @@ class Visualization(FigureCanvas):
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
         self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
 
-        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists
+        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists + [self.axes.get_xaxis(), self.axes.get_yaxis()]
 
 
     def stop(self):
