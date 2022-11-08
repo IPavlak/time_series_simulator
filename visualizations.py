@@ -5,7 +5,7 @@ import pandas as pd
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from matplotlib.ticker import Formatter
+from matplotlib.ticker import Formatter, LinearLocator
 
 import data_manager as dm
 from animation_handler import *
@@ -28,6 +28,17 @@ class MyFormatter(Formatter):
         if ind >= len(self.dates) or ind < 0:
             return ''
         return self.dates[ind].strftime(self.fmt)
+
+class CustomLinearLocator:
+    def __init__(self, numticks, offset=2):
+        self.numticks = numticks
+        self.offset = offset
+    def __getitem__(self, pair):
+        vmin = pair[0]
+        vmax = pair[1]
+        return range(int(vmax-self.offset), int(vmin+1), -int(self.numticks))
+    def __contains__(self, item):
+        return True
 
 
 class Visualization(FigureCanvas):
@@ -55,6 +66,7 @@ class Visualization(FigureCanvas):
 
         # define how often to show x label - i.e. 4 means every fourth candle will have x label
         self.x_tick_rate = 10
+        self.x_tick_offset = 2
 
         # Data
         self.data = dm.data
@@ -84,15 +96,13 @@ class Visualization(FigureCanvas):
         self.frame_idx = framedata.core_data_idx
         self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
 
-        self._set_xticks()  # TODO: check why here and how long does it take
-
         # User defined plots
         user_plot_artists = []
         for plot, data_source in self.plots:
             plot.set_data(self.data_frame.index, data_source.get_data(self.data.Date[self.frame_idx], self.frame_size)) # NaN for not existing values
             user_plot_artists.append(plot)
 
-        # Candles
+        # Candles - TODO: optimize
         if framedata.curr_candle is None or new_frame:
             self._draw_candles(self.data_frame)
 
@@ -112,7 +122,6 @@ class Visualization(FigureCanvas):
         
 
         print("draw_func", framedata.core_data_idx)
-        print("draw time", time()-start)
         return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists + [self.axes.get_xaxis(), self.axes.get_yaxis()]
 
     def _init_draw(self):
@@ -150,7 +159,7 @@ class Visualization(FigureCanvas):
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
         self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
 
-        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists
+        return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists + [self.axes.get_xaxis(), self.axes.get_yaxis()]
 
 
     def stop(self):
@@ -174,7 +183,8 @@ class Visualization(FigureCanvas):
 
     def _setup_x_labels(self):
         self.axes.xaxis.set_major_formatter(MyFormatter(self.data['Date'], '%Y-%m-%d %H:%M')) # TODO: initialize formatter only once
-        self._set_xticks()
+        self.axes.xaxis.set_major_locator( 
+            LinearLocator(numticks=self.x_tick_rate, presets=CustomLinearLocator(self.x_tick_rate, self.x_tick_offset)) )
         # format x-axis dates
         self.fig.autofmt_xdate(bottom=0.1, rotation=0, ha='center')
 
