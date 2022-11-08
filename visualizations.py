@@ -96,8 +96,6 @@ class Visualization(FigureCanvas):
         self.frame_idx = framedata.core_data_idx
         self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
 
-        self._set_xticks()  # TODO: check why here and how long does it take
-
         # User defined plots
         user_plot_artists = []
         for plot, data_source in self.plots:
