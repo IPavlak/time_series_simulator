@@ -122,7 +122,6 @@ class Visualization(FigureCanvas):
         
 
         print("draw_func", framedata.core_data_idx)
-        print("draw time", time()-start)
         return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists + [self.axes.get_xaxis(), self.axes.get_yaxis()]
 
     def _init_draw(self):
