@@ -8,7 +8,7 @@ dependencies = {
 
 parameters = {
     'param1': 'default_value1',
-    'visualization': { 'COLOR': 'Green' }
+    'visualization': { 'COLOR': 'Red', 'STYLE': 'Dashed' }
 }
 
 class TraderExample(SystemTrader):

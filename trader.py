@@ -8,14 +8,10 @@ import numpy as np
 import pandas as pd
 
 import data_manager as dm
-from visualizations import DataSourceInteraface
+from visualizations import DataSourceInteraface, VisualizationParams
 from utils import *
 
 class CommonParams:
-    class VisualizationParams:
-        TYPE = 'Line'
-        COLOR = 'Blue'
-
     # PRICE_TYPE = 'Price Type'
     PERSIST = True
     visualization = VisualizationParams()

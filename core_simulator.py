@@ -144,12 +144,12 @@ class Simulator:
     def add_indicator(self, indicator_name: str, indicator: str, indicator_parameters={}):
         ind = self.indicator_handler.add_indicator(indicator_name, indicator, indicator_parameters, \
                                                    init_frame_idx=self.frame_data.core_data_idx)
-        self.vis.add_plot(ind)
+        self.vis.add_plot(ind, ind.parameters.visualization)
     
     def add_trader(self, trader_name: str, trader: str, trader_parameters={}):
         trader = self.trader_handler.add_trader(trader_name, trader, trader_parameters, \
                                                 init_frame_idx=self.frame_data.core_data_idx)
-        self.vis.add_plot(trader)
+        self.vis.add_plot(trader, trader.parameters.visualization)
 
     def run(self):
         sleep(1.0) # wait for initialization to finish
