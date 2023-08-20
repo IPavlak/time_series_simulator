@@ -10,7 +10,7 @@ from utils import *
 class CommonParams:
     # PRICE_TYPE = 'Price Type'
     PERSIST = True
-    visualization = VisualizationParams()
+    visualization = [VisualizationParams()]
 
 
 class SystemIndicator(DataSourceInteraface):
@@ -80,7 +80,7 @@ class SystemIndicator(DataSourceInteraface):
         self.last_output_size = len(output)
 
 
-    def get_data(self, time, n=1) -> list:
+    def get_data(self, time, n=1): # -> np.ndarray:
         ''' Overloaded interface function for getting indicator ouput data '''
         last_time = self.data.Date[self.data_idx]
         step = 0

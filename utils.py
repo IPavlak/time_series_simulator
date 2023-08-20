@@ -85,6 +85,14 @@ def update_from_dict(obj, d):
                 member.update(value)
             elif member.__class__.__module__ == 'builtins':
                 setattr(obj, key, value)
+            elif isinstance(member, list):
+                if isinstance(value, list):
+                    for m in value:
+                        update_from_dict(member[-1], m)
+                        member.append(member[0])    # list elements are all same type, object has to have at least 1 element defined
+                    member.pop()
+                else:
+                    raise ValueError("Cannot parse from '{}' to '{}' (field name: '{}')".format(type(value), type(member), key))
             elif isinstance(value, dict):
                 update_from_dict(member, value)
             else:

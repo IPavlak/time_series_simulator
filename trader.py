@@ -14,7 +14,7 @@ from utils import *
 class CommonParams:
     # PRICE_TYPE = 'Price Type'
     PERSIST = True
-    visualization = VisualizationParams()
+    visualization = [VisualizationParams()]
 
 class OrderType(Enum):
     UNDEFINED = -1
