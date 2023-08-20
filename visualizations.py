@@ -57,8 +57,12 @@ class Plotter:
         self.params = params
         self.plots = []
     
-    def update_plots(self, x_values, time, n):
+    def update_plots(self, x_values, time, n, replot=False):
         data = self.data_source.get_data(time, n)
+
+        if replot:
+            self.plots = []
+
         for i in range(data.shape[1]):
             if i < len(self.plots):
                 self.plots[i].set_data(x_values, data[:,i])
@@ -187,7 +191,9 @@ class Visualization(FigureCanvas):
         for i in range(len(self.plotters)): # TODO: plotter in plotters
             # print(self.plots[i][1].get_data(self.data.Date[self.frame_idx], self.frame_size).shape)
             # plot_ref, = self.axes.plot(self.data_frame.index, self.plots[i][1].get_data(self.data.Date[self.frame_idx], self.frame_size)[:,0], **self.plots[i][2])
-            self.plotters[i].update_plots(self.data_frame.index, self.data.Date[self.frame_idx], self.frame_size)
+            self.plotters[i].update_plots(self.data_frame.index, self.data.Date[self.frame_idx], self.frame_size, replot=True)
+            # self.plots[i] = (plot_ref, self.plots[i][1], self.plots[i][2])
+            # user_plot_artists.append(plot_ref)
             user_plot_artists += self.plotters[i].get_plots()
 
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
