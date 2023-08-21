@@ -83,8 +83,6 @@ def update_from_dict(obj, d):
             member = getattr(obj, key)
             if isinstance(member, dict):
                 member.update(value)
-            elif member.__class__.__module__ == 'builtins':
-                setattr(obj, key, value)
             elif isinstance(member, list):
                 if isinstance(value, list):
                     for m in value:
@@ -93,6 +91,8 @@ def update_from_dict(obj, d):
                     member.pop()
                 else:
                     raise ValueError("Cannot parse from '{}' to '{}' (field name: '{}')".format(type(value), type(member), key))
+            elif member.__class__.__module__ == 'builtins':
+                setattr(obj, key, value)
             elif isinstance(value, dict):
                 update_from_dict(member, value)
             else:
