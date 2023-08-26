@@ -87,7 +87,8 @@ def update_from_dict(obj, d):
                 if isinstance(value, list):
                     for m in value:
                         update_from_dict(member[-1], m)
-                        member.append(member[0])    # list elements are all same type, object has to have at least 1 element defined
+                        print(m, member[-1].COLOR)
+                        member.append(type(member[0])())    # list elements are all same type, object has to have at least 1 element defined
                     member.pop()
                 else:
                     raise ValueError("Cannot parse from '{}' to '{}' (field name: '{}')".format(type(value), type(member), key))

@@ -9,7 +9,8 @@ dependencies = {
 parameters = {
     'param1': 'default_value1',
     'visualization': [
-        { 'COLOR': 'Red', 'STYLE': 'Dashed' }
+        { 'COLOR': 'Blue', 'STYLE': 'Dashed' }, # BUY
+        { 'COLOR': 'Red', 'STYLE': 'Dashed' }   # SELL
     ]
 }
 
