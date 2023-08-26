@@ -1,4 +1,3 @@
-from ast import Num
 from numbers import Number
 from typing import List
 from indicator import SystemIndicator

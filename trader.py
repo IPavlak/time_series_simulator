@@ -1,6 +1,5 @@
 from copy import deepcopy
 from typing import Dict, List
-from numbers import Number
 from functools import total_ordering
 from enum import Enum
 from uuid import uuid4
@@ -50,7 +49,14 @@ class Order:
         return self.close_price - self.open_price
 
     def __lt__(self, other):
-        return self.close_price < other.close_price
+        if other.status == OrderStatus.ACTIVE:
+            if self.status != OrderStatus.ACTIVE:
+                return True
+            else:
+                return self.open_time < other.open_time
+        else:
+            return self.close_time < other.close_time
+
     def __eq__(self, other):
         return self.id == other.id
 
@@ -229,29 +235,37 @@ class SystemTrader(DataSourceInteraface):
 
 
     # TODO: output should be able to have data (multiple orders), for now only 1 (last active)
-    def get_data(self, time, n=1) -> list:
+    def get_data(self, time, n=1) -> np.ndarray:
         ''' Overloaded interface function for getting reader ouput data - data for visualization'''
-        output = [np.nan for i in range(n)]
+        output = np.full(shape=[n, 2*len(self.orders)], fill_value=np.nan)
 
-        last_order = self.get_last_order()
-        if last_order.status == OrderStatus.UNINITIALIZED:
-            return output
+        orders_num = 0
+        for order in self.orders.values():
 
-        last_price = self.current_price if last_order.status == OrderStatus.ACTIVE else last_order.close_price
-        last_time = self.current_time if last_order.status == OrderStatus.ACTIVE else last_order.close_time
+            if order.status != OrderStatus.CLOSED and order.status != OrderStatus.ACTIVE:
+                continue
+            
+            close_price = self.current_price if order.status == OrderStatus.ACTIVE else order.close_price
+            close_time = self.current_time if order.status == OrderStatus.ACTIVE else order.close_time
+            
+            data_idx = get_idx_from_time_and_hint(time, self.data, self.data_idx)
+            time_unit = pd.Timedelta(self.data.Date[data_idx] - self.data.Date[data_idx-1]).total_seconds()
+            open_idx = self.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - order.open_time).total_seconds() / time_unit) # best guess
+            open_idx = get_idx_from_time_and_hint(order.open_time, self.data, open_idx)
+            close_idx = self.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - close_time).total_seconds() / time_unit) # best guess
+            close_idx = get_idx_from_time_and_hint(close_time, self.data, close_idx)
+            N = max(1, close_idx - open_idx)
 
-        data_idx = get_idx_from_time_and_hint(time, self.data, self.data_idx)
-        time_unit = pd.Timedelta(self.data.Date[data_idx] - self.data.Date[data_idx-1]).total_seconds()
-        open_idx = self.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - last_order.open_time).total_seconds() / time_unit) # best guess
-        open_idx = get_idx_from_time_and_hint(last_order.open_time, self.data, open_idx)
-        close_idx = self.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - last_time).total_seconds() / time_unit) # best guess
-        close_idx = get_idx_from_time_and_hint(last_time, self.data, close_idx)
-        N = close_idx - open_idx if close_idx > open_idx else close_idx - open_idx + 1
+            if close_idx - data_idx > n:
+                continue
 
-        for idx in range(data_idx-n+1, data_idx+1):
-            if open_idx <= idx <= close_idx:
-                output[idx - (data_idx-n+1)] = last_order.open_price + (idx - open_idx)/N * (last_price - last_order.open_price)
+            for idx in range(data_idx-n+1, data_idx+1):
+                if open_idx <= idx <= close_idx:
+                    col_idx = orders_num*2 if order.type == OrderType.BUY else orders_num*2+1
+                    output[idx - (data_idx-n+1), col_idx] = order.open_price + (idx - open_idx)/N * (close_price - order.open_price)
+            orders_num += 1
 
+        output = output[:, :orders_num*2]
         return output
 
 
@@ -261,3 +275,7 @@ class SystemTrader(DataSourceInteraface):
     
     def calculate(self, data):
         pass
+
+class SystemTraderBuy(SystemTrader, DataSourceInteraface):
+    def __init__(self, name="trader", parameters: Dict = {}):
+        super().__init__(name, parameters)

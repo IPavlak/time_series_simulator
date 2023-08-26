@@ -14,7 +14,7 @@ from utils import *
 
 
 class DataSourceInteraface:
-    def get_data(self, time, n: int) -> list:
+    def get_data(self, time, n: int) -> np.ndarray: # data is arranged in columns
         """ Get data which corresponds to time and (n-1) previous data samples (n data samples in total) """
 
 class VisualizationParams:
