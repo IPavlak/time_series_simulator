@@ -107,8 +107,8 @@ class SystemTrader(DataSourceInteraface):
     def create_order(self, order_type, stop_loss, take_profit, strike_price=None):
         if not self._are_order_params_valid(self.current_price, order_type, stop_loss, take_profit, strike_price):
             print("[{}][SystemTrader] Order parameters are not valid, disregarding order: "
-                  "(order type: {}, current price: {}, stop loss: {}, take profit: {}, strike price: {})",  \
-                    order_type, self.current_price, stop_loss, take_profit, strike_price)
+                  "(order type: {}, current price: {}, stop loss: {}, take profit: {}, strike price: {})".format(
+                    self.name, order_type, self.current_price, stop_loss, take_profit, strike_price))
             return Order()
         
         order = Order()
@@ -239,7 +239,7 @@ class SystemTrader(DataSourceInteraface):
         ''' Overloaded interface function for getting reader ouput data - data for visualization'''
         output = np.full(shape=[n, 2*len(self.orders)], fill_value=np.nan)
 
-        orders_num = 0
+        buy_orders_num = sell_orders_num = 0
         for order in self.orders.values():
 
             if order.status != OrderStatus.CLOSED and order.status != OrderStatus.ACTIVE:
@@ -256,16 +256,18 @@ class SystemTrader(DataSourceInteraface):
             close_idx = get_idx_from_time_and_hint(close_time, self.data, close_idx)
             N = max(1, close_idx - open_idx)
 
-            if close_idx - data_idx > n:
+            if data_idx - close_idx > n:
                 continue
 
+            col_idx = buy_orders_num*2 if order.type == OrderType.BUY else sell_orders_num*2+1
             for idx in range(data_idx-n+1, data_idx+1):
                 if open_idx <= idx <= close_idx:
-                    col_idx = orders_num*2 if order.type == OrderType.BUY else orders_num*2+1
                     output[idx - (data_idx-n+1), col_idx] = order.open_price + (idx - open_idx)/N * (close_price - order.open_price)
-            orders_num += 1
 
-        output = output[:, :orders_num*2]
+            if order.type == OrderType.BUY: buy_orders_num += 1
+            else: sell_orders_num += 1
+
+        output = output[:, :max(buy_orders_num, sell_orders_num)*2]
         return output
 
 

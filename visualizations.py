@@ -69,9 +69,10 @@ class Plotter:
             else:
                 plot_ref, = self.axes.plot(x_values, data[:,i], **self.params[i%len(self.params)])
                 self.plots.append(plot_ref)
-        
-        if data.shape[1] < len(self.plots):
-            self.plots = self.plots[0:data.shape[1]]
+
+        for i in range(data.shape[1], len(self.plots)):
+            self.axes.lines.remove(self.plots[i])
+        self.plots = self.plots[0:data.shape[1]]
 
     def get_plots(self):
         return self.plots
@@ -189,11 +190,7 @@ class Visualization(FigureCanvas):
         # User defined plots
         user_plot_artists = []
         for i in range(len(self.plotters)): # TODO: plotter in plotters
-            # print(self.plots[i][1].get_data(self.data.Date[self.frame_idx], self.frame_size).shape)
-            # plot_ref, = self.axes.plot(self.data_frame.index, self.plots[i][1].get_data(self.data.Date[self.frame_idx], self.frame_size)[:,0], **self.plots[i][2])
             self.plotters[i].update_plots(self.data_frame.index, self.data.Date[self.frame_idx], self.frame_size, replot=True)
-            # self.plots[i] = (plot_ref, self.plots[i][1], self.plots[i][2])
-            # user_plot_artists.append(plot_ref)
             user_plot_artists += self.plotters[i].get_plots()
 
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
@@ -215,8 +212,6 @@ class Visualization(FigureCanvas):
 
     def add_plot(self, data_source, vis_params, **kwargs):
         params = self._vis_params_to_plot_params(vis_params)
-        # plot_ref, = self.axes.plot([], [], **kwargs) # placeholder
-        # self.plots.append((plot_ref, data_source, params))
         self.plotters.append(Plotter(self.axes, data_source, params))
 
     def set_init_frame(self, data_frame):
