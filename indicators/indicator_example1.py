@@ -8,7 +8,9 @@ dependencies = {
 
 parameters = {
     'param1': 'default_value1',
-    # 'visualization': { 'COLOR': 'Blue' }
+    # 'visualization': [
+    #     { 'COLOR': 'Blue' }
+    # ]
 }
 
 class IndicatorExample(SystemIndicator):
