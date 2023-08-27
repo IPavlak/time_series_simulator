@@ -1,4 +1,3 @@
-from ast import Num
 from numbers import Number
 from typing import List
 from indicator import SystemIndicator
@@ -8,7 +7,10 @@ dependencies = {
 }
 
 parameters = {
-    'param1': 'default_value1'
+    'param1': 'default_value1',
+    # 'visualization': [
+    #     { 'COLOR': 'Blue' }
+    # ]
 }
 
 class IndicatorExample(SystemIndicator):

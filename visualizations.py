@@ -1,4 +1,5 @@
 from time import sleep
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ from utils import *
 
 
 class DataSourceInteraface:
-    def get_data(self, time, n: int) -> list:
+    def get_data(self, time, n: int) -> np.ndarray: # data is arranged in columns
         """ Get data which corresponds to time and (n-1) previous data samples (n data samples in total) """
 
 class VisualizationParams:
@@ -48,6 +49,34 @@ class CustomLinearLocator:
     def __contains__(self, item):
         return True
 
+
+class Plotter:
+    def __init__(self, axes, data_source, params):
+        self.axes = axes
+        self.data_source = data_source
+        self.params = params
+        self.plots = []
+    
+    def update_plots(self, x_values, time, n, replot=False):
+        data = self.data_source.get_data(time, n)
+
+        if replot:
+            self.plots = []
+
+        for i in range(data.shape[1]):
+            if i < len(self.plots):
+                self.plots[i].set_data(x_values, data[:,i])
+            else:
+                plot_ref, = self.axes.plot(x_values, data[:,i], **self.params[i%len(self.params)])
+                self.plots.append(plot_ref)
+
+        for i in range(data.shape[1], len(self.plots)):
+            self.axes.lines.remove(self.plots[i])
+        self.plots = self.plots[0:data.shape[1]]
+
+    def get_plots(self):
+        return self.plots
+        
 
 class Visualization(FigureCanvas):
     def __init__(self):
@@ -87,7 +116,7 @@ class Visualization(FigureCanvas):
 
 
         # User defined plots
-        self.plots = []
+        self.plotters = []
         
         # self.plot_ref = self.axes.plot(self.data.index, self.data.Close)
         self.bars_oc = self.axes.bar([], [], self.width_oc, \
@@ -106,9 +135,10 @@ class Visualization(FigureCanvas):
 
         # User defined plots
         user_plot_artists = []
-        for plot, data_source, params in self.plots:
-            plot.set_data(self.data_frame.index, data_source.get_data(self.data.Date[self.frame_idx], self.frame_size)) # NaN for not existing values
-            user_plot_artists.append(plot)
+        for plotter in self.plotters:
+            # plot.set_data(self.data_frame.index, data_source.get_data(self.data.Date[self.frame_idx], self.frame_size)) # NaN for not existing values
+            plotter.update_plots(self.data_frame.index, self.data.Date[self.frame_idx], self.frame_size)
+            user_plot_artists += plotter.get_plots()
 
         # Candles
         if framedata.curr_candle is None or new_frame:
@@ -159,10 +189,9 @@ class Visualization(FigureCanvas):
 
         # User defined plots
         user_plot_artists = []
-        for i in range(len(self.plots)):
-            plot_ref, = self.axes.plot(self.data_frame.index, self.plots[i][1].get_data(self.data.Date[self.frame_idx], self.frame_size), **self.plots[i][2])
-            self.plots[i] = (plot_ref, self.plots[i][1], self.plots[i][2])
-            user_plot_artists.append(plot_ref)
+        for i in range(len(self.plotters)): # TODO: plotter in plotters
+            self.plotters[i].update_plots(self.data_frame.index, self.data.Date[self.frame_idx], self.frame_size, replot=True)
+            user_plot_artists += self.plotters[i].get_plots()
 
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
         self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
@@ -183,8 +212,7 @@ class Visualization(FigureCanvas):
 
     def add_plot(self, data_source, vis_params, **kwargs):
         params = self._vis_params_to_plot_params(vis_params)
-        plot_ref, = self.axes.plot([], [], **kwargs) # placeholder
-        self.plots.append((plot_ref, data_source, params))
+        self.plotters.append(Plotter(self.axes, data_source, params))
 
     def set_init_frame(self, data_frame):
         if not self.is_running():
@@ -251,12 +279,15 @@ class Visualization(FigureCanvas):
         self.axes.set_ylim(min(self.data_frame.Low)-y_margin_abs, max(self.data_frame.High)+y_margin_abs)
         self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
 
-    def _vis_params_to_plot_params(self, vis_params: VisualizationParams):
-        params = {}
-        params['color'] = vis_params.COLOR.lower()
-        params['linestyle'] = vis_params.STYLE.lower() # ?
-        params['markersize'] = vis_params.SIZE
-        params['linewidth'] = vis_params.WIDTH
+    def _vis_params_to_plot_params(self, vis_params: List[VisualizationParams]):
+        params = []
+        for vis_param_set in vis_params:
+            param = {}
+            param['color'] = vis_param_set.COLOR.lower()
+            param['linestyle'] = vis_param_set.STYLE.lower() # ?
+            param['markersize'] = vis_param_set.SIZE
+            param['linewidth'] = vis_param_set.WIDTH
+            params.append(param)
         return params
 
 if __name__ == '__main__':

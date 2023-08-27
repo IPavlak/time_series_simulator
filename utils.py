@@ -83,6 +83,15 @@ def update_from_dict(obj, d):
             member = getattr(obj, key)
             if isinstance(member, dict):
                 member.update(value)
+            elif isinstance(member, list):
+                if isinstance(value, list):
+                    for m in value:
+                        update_from_dict(member[-1], m)
+                        print(m, member[-1].COLOR)
+                        member.append(type(member[0])())    # list elements are all same type, object has to have at least 1 element defined
+                    member.pop()
+                else:
+                    raise ValueError("Cannot parse from '{}' to '{}' (field name: '{}')".format(type(value), type(member), key))
             elif member.__class__.__module__ == 'builtins':
                 setattr(obj, key, value)
             elif isinstance(value, dict):
