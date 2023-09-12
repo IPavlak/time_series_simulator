@@ -6,11 +6,12 @@ import numpy as np
 import pandas as pd
 
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStyle, QMainWindow, QApplication
+from PyQt5.QtWidgets import QMainWindow, QApplication, QDesktopWidget
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 # App
+from ui.main import *
 from visualizations import *
 from core_simulator import *
 
@@ -23,15 +24,16 @@ tick_data_file = 'data/EURUSD/EURUSD1.csv'
 
 ########################################
 
-def indicator_func(data):
-    return [data.iloc[0].Close]
 
-#######################################
+def connectSimAndUI(ui, sim):
+    ui.play_btn.clicked.connect(sim.start)
+    ui.pause_btn.clicked.connect(sim.pause)
+    ui.stop_btn.clicked.connect(sim.stop)
+    ui.prev_btn.clicked.connect(sim.step_backward)
+    ui.next_btn.clicked.connect(sim.step_forward)
 
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super(MainWindow, self).__init__()
+class MainWindow():
+    def __init__(self, main_window):
 
         # self.canvas = MplCanvas() -> maybe this is better, and I should send only Canvas to Visualization object ?
         self.vis = Visualization()
@@ -42,58 +44,16 @@ class MainWindow(QMainWindow):
 
         self.sim = Simulator(self.comm, self.vis, 1.2)
 
-        # set size
-        self.showMaximized()
+        ui = UI()
+        ui.setup_ui(main_window, self.vis)
+        connectSimAndUI(ui, self.sim)
 
-        widget = QWidget(self)
-        vlay = QVBoxLayout(widget)
-        hlay = QHBoxLayout()
 
-        play_btn = QPushButton()
-        pixmap = getattr(QStyle, 'SP_MediaPlay')
-        play_icon = self.style().standardIcon(pixmap)
-        play_btn.setIcon(play_icon)
-        play_btn.clicked.connect(self.sim.start)
-        hlay.addWidget(play_btn)
-
-        pause_btn = QPushButton()
-        pixmap = getattr(QStyle, 'SP_MediaPause')
-        pause_icon = self.style().standardIcon(pixmap)
-        pause_btn.setIcon(pause_icon)
-        pause_btn.clicked.connect(self.sim.pause)
-        hlay.addWidget(pause_btn)
-
-        stop_btn = QPushButton()
-        pixmap = getattr(QStyle, 'SP_MediaStop')
-        stop_icon = self.style().standardIcon(pixmap)
-        stop_btn.setIcon(stop_icon)
-        stop_btn.clicked.connect(self.sim.stop)
-        hlay.addWidget(stop_btn)
-
-        prev_btn = QPushButton()
-        pixmap = getattr(QStyle, 'SP_MediaSeekBackward')
-        prev_icon = self.style().standardIcon(pixmap)
-        prev_btn.setIcon(prev_icon)
-        prev_btn.clicked.connect(self.sim.step_backward)
-        hlay.addWidget(prev_btn)
-
-        next_btn = QPushButton()
-        pixmap = getattr(QStyle, 'SP_MediaSeekForward')
-        next_icon = self.style().standardIcon(pixmap)
-        next_btn.setIcon(next_icon)
-        next_btn.clicked.connect(self.sim.step_forward)
-        hlay.addWidget(next_btn)
-
-        vlay.addLayout(hlay)
-        vlay.addWidget(self.vis)
-        self.setCentralWidget(widget)
-
-        
         # myDataLoop = threading.Thread(name = 'myDataLoop', target = self.run, daemon = True, args=(self.vis.start_sim, self.vis.stop_sim))
         # myDataLoop.start()
         self._run()
 
-        self.show()
+        main_window.show()
 
     def run(self, start_vis, stop_vis):
         sleep(1) # wait for first draw to init animation
@@ -135,6 +95,15 @@ class Communicate(QtCore.QObject):
 ''' End Class '''
 
 
-app = QApplication(sys.argv)
-win = MainWindow()
-sys.exit(app.exec_())
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    win = QMainWindow()
+
+    print("screen size ", QDesktopWidget().screenGeometry(-1), QDesktopWidget().availableGeometry())
+    g = app.desktop().availableGeometry(-1)
+    # print(g)
+    # print(self.frameSize())
+
+    mw = MainWindow(win)
+    
+    sys.exit(app.exec_())
