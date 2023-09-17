@@ -149,7 +149,10 @@ class Simulator:
     def add_trader(self, trader_name: str, trader: str, trader_parameters={}):
         trader = self.trader_handler.add_trader(trader_name, trader, trader_parameters, \
                                                 init_frame_idx=self.frame_data.core_data_idx)
-        self.vis.add_plot(trader, trader.parameters.visualization)
+        self.vis.add_plot(trader.buy_orders_data_source, trader.get_buy_vis_params())
+        self.vis.add_plot(trader.sell_orders_data_source, trader.get_sell_vis_params())
+        self.vis.add_plot(trader.buy_pend_orders_data_source, trader.get_buy_vis_params())
+        self.vis.add_plot(trader.sell_pend_orders_data_source, trader.get_sell_vis_params())
 
     def run(self):
         sleep(1.0) # wait for initialization to finish

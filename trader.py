@@ -59,8 +59,58 @@ class Order:
 
     def __eq__(self, other):
         return self.id == other.id
+    
+class TraderOrderDataSourceWrapper(DataSourceInteraface):
+    def __init__(self, trader, order_types: List[OrderType]):
+        self.trader = trader
+        self.order_types = order_types
+        self.data = trader.data
 
-class SystemTrader(DataSourceInteraface):
+    def get_data(self, time, n=1) -> np.ndarray:
+        ''' Overloaded interface function for getting reader ouput data - data for visualization'''
+        output = np.full(shape=[n, len(self.trader.orders)], fill_value=np.nan)
+
+        orders_num = 0
+        for order in self.trader.orders.values():
+
+            if order.status == OrderStatus.UNINITIALIZED or order.status == OrderStatus.DELETED:
+                continue
+
+            if order.type not in self.order_types:
+                continue
+
+            if order.status == OrderStatus.PENDING:
+
+                data_idx = get_idx_from_time_and_hint(time, self.data, self.trader.data_idx)
+                for idx in range(data_idx-n+1, data_idx+1):
+                    output[idx, orders_num] = order.open_price
+            else:
+
+                close_price = self.trader.current_price if order.status == OrderStatus.ACTIVE else order.close_price
+                close_time = self.trader.current_time if order.status == OrderStatus.ACTIVE else order.close_time
+                
+                data_idx = get_idx_from_time_and_hint(time, self.data, self.trader.data_idx)
+                time_unit = pd.Timedelta(self.data.Date[data_idx] - self.data.Date[data_idx-1]).total_seconds()
+                open_idx = self.trader.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - order.open_time).total_seconds() / time_unit) # best guess
+                open_idx = get_idx_from_time_and_hint(order.open_time, self.data, open_idx)
+                close_idx = self.trader.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - close_time).total_seconds() / time_unit) # best guess
+                close_idx = get_idx_from_time_and_hint(close_time, self.data, close_idx)
+                N = max(1, close_idx - open_idx)
+
+                if data_idx - close_idx > n:
+                    continue
+
+                for idx in range(data_idx-n+1, data_idx+1):
+                    if open_idx <= idx <= close_idx:
+                        output[idx - (data_idx-n+1), orders_num] = order.open_price + (idx - open_idx)/N * (close_price - order.open_price)
+
+            orders_num += 1
+
+        output = output[:, :orders_num]
+        return output
+
+
+class SystemTrader():
     ''' System trader is a wrapper around User trader which provides all neccessary 
         methods for trader to be integrated in simulation '''
 
@@ -68,6 +118,7 @@ class SystemTrader(DataSourceInteraface):
         
         self.parameters = CommonParams()
         self.set_parameters(parameters)
+        # TODO: check vis params validity
         self.name = name
         self.data = dm.data
         self.data_idx = 0
@@ -77,6 +128,11 @@ class SystemTrader(DataSourceInteraface):
 
         self.orders = {} #(id, Order)
         self.spread = 0.0
+
+        self.buy_orders_data_source = TraderOrderDataSourceWrapper(self, [OrderType.BUY])
+        self.sell_orders_data_source = TraderOrderDataSourceWrapper(self, [OrderType.SELL])
+        self.buy_pend_orders_data_source = TraderOrderDataSourceWrapper(self, [OrderType.BUY_LIMIT, OrderType.BUY_STOP])
+        self.sell_pend_orders_data_source = TraderOrderDataSourceWrapper(self, [OrderType.SELL_LIMIT, OrderType.SELL_STOP])
 
     @property
     def closed_orders(self):
@@ -102,6 +158,12 @@ class SystemTrader(DataSourceInteraface):
         for indicator in self.depending_indicators:
             # TODO: check if indicator name already exists
             setattr(self, indicator.name, indicator)
+
+    def get_buy_vis_params(self):
+        return [self.parameters.visualization[0]]
+    
+    def get_sell_vis_params(self):
+        return [self.parameters.visualization[1]]
 
 
     def create_order(self, order_type, stop_loss, take_profit, strike_price=None):
@@ -232,43 +294,6 @@ class SystemTrader(DataSourceInteraface):
             self.current_time = time
             self._update_orders()
             self.calculate(input_data)
-
-
-    # TODO: output should be able to have data (multiple orders), for now only 1 (last active)
-    def get_data(self, time, n=1) -> np.ndarray:
-        ''' Overloaded interface function for getting reader ouput data - data for visualization'''
-        output = np.full(shape=[n, 2*len(self.orders)], fill_value=np.nan)
-
-        buy_orders_num = sell_orders_num = 0
-        for order in self.orders.values():
-
-            if order.status != OrderStatus.CLOSED and order.status != OrderStatus.ACTIVE:
-                continue
-            
-            close_price = self.current_price if order.status == OrderStatus.ACTIVE else order.close_price
-            close_time = self.current_time if order.status == OrderStatus.ACTIVE else order.close_time
-            
-            data_idx = get_idx_from_time_and_hint(time, self.data, self.data_idx)
-            time_unit = pd.Timedelta(self.data.Date[data_idx] - self.data.Date[data_idx-1]).total_seconds()
-            open_idx = self.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - order.open_time).total_seconds() / time_unit) # best guess
-            open_idx = get_idx_from_time_and_hint(order.open_time, self.data, open_idx)
-            close_idx = self.data_idx - int(pd.Timedelta(self.data.Date[data_idx] - close_time).total_seconds() / time_unit) # best guess
-            close_idx = get_idx_from_time_and_hint(close_time, self.data, close_idx)
-            N = max(1, close_idx - open_idx)
-
-            if data_idx - close_idx > n:
-                continue
-
-            col_idx = buy_orders_num*2 if order.type == OrderType.BUY else sell_orders_num*2+1
-            for idx in range(data_idx-n+1, data_idx+1):
-                if open_idx <= idx <= close_idx:
-                    output[idx - (data_idx-n+1), col_idx] = order.open_price + (idx - open_idx)/N * (close_price - order.open_price)
-
-            if order.type == OrderType.BUY: buy_orders_num += 1
-            else: sell_orders_num += 1
-
-        output = output[:, :max(buy_orders_num, sell_orders_num)*2]
-        return output
 
 
     # User functions - initialize is not obligatory function, if it is not defined default will be used
