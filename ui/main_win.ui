@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>930</width>
-    <height>783</height>
+    <width>957</width>
+    <height>778</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -59,35 +59,15 @@
            </spacer>
           </item>
           <item>
-           <widget class="QPushButton" name="playButton">
+           <widget class="QPushButton" name="playToggleButton">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
-            </property>
-            <property name="text">
-             <string/>
             </property>
             <property name="icon">
              <iconset theme="media-playback-start">
-              <normaloff>.</normaloff>.</iconset>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pauseButton">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="icon">
-             <iconset theme="media-playback-pause">
               <normaloff>.</normaloff>.</iconset>
             </property>
            </widget>
@@ -259,7 +239,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>930</width>
+     <width>957</width>
      <height>22</height>
     </rect>
    </property>
