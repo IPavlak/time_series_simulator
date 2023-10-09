@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QMainWindow
 from PyQt5 import QtCore, QtGui, QtWidgets
 from core_simulator import Simulator
 from ui.main_win import Ui_MainWindow
+from visualizations import Visualization
 
 
 
@@ -11,16 +12,19 @@ PLAY_ICON = QtGui.QIcon.fromTheme("media-playback-start")
 PAUSE_ICON = QtGui.QIcon.fromTheme("media-playback-pause")
 
 class UI(QMainWindow, Ui_MainWindow):
-    def __init__(self, sim : Simulator):
+    def __init__(self, sim : Simulator, vis: Visualization):
         super(UI, self).__init__()
 
         # simulator reference to interact with
         self.sim = sim
+        # visualization reference
+        self.vis = vis
 
         # set up user interface from generated code
         self.setupUi(self)
 
         # custom setup that cannot be done from QT designer
+        self.horizontalLayout.addWidget(self.vis)
         self.settingsToggled = True
 
         self.playToggleButton.setShortcut("Space")
