@@ -32,6 +32,12 @@ class UI(QMainWindow, Ui_MainWindow):
         self.backwardButton.setShortcut("Left")
         self.stopButton.setShortcut("Ctrl+R")
 
+        # remove focus option to stop "Space" shortcut
+        self.playToggleButton.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.forwardButton.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.backwardButton.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.stopButton.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+
 
     @QtCore.pyqtSlot()
     def on_settingsToggleButton_clicked(self):
@@ -48,24 +54,21 @@ class UI(QMainWindow, Ui_MainWindow):
     @QtCore.pyqtSlot()
     def on_playToggleButton_clicked(self):
         if self.sim.running:
-            # self.sim.pause()
-            self.playToggleButton.setIcon(PAUSE_ICON)
-        else:
-            # self.sim.start()
+            self.sim.pause()
             self.playToggleButton.setIcon(PLAY_ICON)
+        else:
+            self.sim.start()
+            self.playToggleButton.setIcon(PAUSE_ICON)
 
     @QtCore.pyqtSlot()
     def on_stopButton_clicked(self):
-        # self.sim.stop()
-        print("clicked")
+        self.sim.stop()
     
     @QtCore.pyqtSlot()
     def on_forwardButton_clicked(self):
-        # self.sim.step_forward()
-        pass
+        self.sim.step_forward()
 
     @QtCore.pyqtSlot()
     def on_backwardButton_clicked(self):
-        # self.sim.step_backward()
-        pass
+        self.sim.step_backward()
             
