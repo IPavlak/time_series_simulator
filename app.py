@@ -8,8 +8,6 @@ import pandas as pd
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QApplication, QDesktopWidget
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-
 # App
 # from ui.main import *
 from ui.main_win_backend import *
@@ -54,6 +52,8 @@ def testRun(start_vis, stop_vis):
 # go very very wrong..
 class Communicate(QtCore.QObject):
     update_vis_signal = QtCore.pyqtSignal(threading.Event, FrameData)
+    init_frame_vis_signal = QtCore.pyqtSignal(FrameData)
+    add_plot_vis_signal = QtCore.pyqtSignal()
 
 ''' End Class '''
 
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     sim = Simulator(comm, vis, 1.2)
 
     ### User Interface
-    ui = UI(sim)
+    ui = UI(sim, vis)
 
     runSim()
 

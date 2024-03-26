@@ -79,6 +79,7 @@ class Simulator:
             if self.use_ticks:
                 self.tick_data_idx = get_idx_from_time(self.tick_data, self.start_time)
             self.frame_data.curr_candle = None
+            # TODO: reset indicators and traders
 
     def setup_simulator(self, data_file, start_time, stop_time, interval, use_ticks, tick_data_file=None):
         if self.running:
@@ -115,10 +116,10 @@ class Simulator:
 
                 self.is_input_valid = True
 
-                if self.vis.is_running():
-                    self._draw_init_frame()
-                else:
-                    self.vis.set_init_frame(self.frame_data)
+                self.vis.set_init_frame(self.frame_data)
+                # if vis is running   # maybe unnecessary
+                    # self._draw_init_frame()
+                    
                 
                 # for indicator in self.indicators:
                 #     indicator.init(self.frame_data.core_data_idx)

@@ -1,4 +1,4 @@
-from time import sleep
+from time import sleep, time
 from typing import List
 
 import numpy as np
@@ -7,6 +7,7 @@ import pandas as pd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.ticker import Formatter, LinearLocator
+from matplotlib.pyplot import getp, setp
 
 import data_manager as dm
 from animation_handler import *
@@ -114,6 +115,8 @@ class Visualization(FigureCanvas):
         self.frame_idx = 10
 
 
+        # Event controls
+        self.fig.canvas.mpl_connect('button_release_event', self.on_click)
 
         # User defined plots
         self.plotters = []
@@ -129,6 +132,8 @@ class Visualization(FigureCanvas):
 
 
     def _animate(self, framedata):
+        start = time()
+
         new_frame = self.frame_idx != framedata.core_data_idx
         self.frame_idx = framedata.core_data_idx
         self.data_frame = self.data[self.frame_idx-self.frame_size+1 : self.frame_idx+1]
@@ -136,7 +141,6 @@ class Visualization(FigureCanvas):
         # User defined plots
         user_plot_artists = []
         for plotter in self.plotters:
-            # plot.set_data(self.data_frame.index, data_source.get_data(self.data.Date[self.frame_idx], self.frame_size)) # NaN for not existing values
             plotter.update_plots(self.data_frame.index, self.data.Date[self.frame_idx], self.frame_size)
             user_plot_artists += plotter.get_plots()
 
@@ -160,6 +164,7 @@ class Visualization(FigureCanvas):
         
 
         print("draw_func", framedata.core_data_idx)
+        print("draw time", time()-start)
         return self.bars_oc.patches + self.bars_hl.patches + user_plot_artists + [self.axes.get_xaxis(), self.axes.get_yaxis()]
 
     def _init_draw(self):
@@ -188,12 +193,16 @@ class Visualization(FigureCanvas):
             if candle.Open < candle.Close: rect.set_color(self.color_up)
             else: rect.set_color(self.color_down)
 
+        start=time()
         # User defined plots
         user_plot_artists = []
         for i in range(len(self.plotters)): # TODO: plotter in plotters
             self.plotters[i].update_plots(self.data_frame.index, self.data.Date[self.frame_idx], self.frame_size, replot=True)
+            print(type(self.data_frame.index))
+            print(self.data_frame.index.shape)
             user_plot_artists += self.plotters[i].get_plots()
 
+        print("init draw timing", time()-start)
         self.axes.set_ylim(min(self.data_frame.Low), max(self.data_frame.High))
         self.axes.set_xlim(self.data_frame.index[0]-self.x_margin, self.data_frame.index[-1]+self.x_margin)
 
@@ -209,6 +218,9 @@ class Visualization(FigureCanvas):
     def is_running(self):
         return self.animation.event_source.is_running()
 
+    def on_click(self, event):
+        print(event.xdata, event.ydata)
+        print(self.data[int(event.xdata)])
 
 
     def add_plot(self, data_source, vis_params, **kwargs):
@@ -290,6 +302,11 @@ class Visualization(FigureCanvas):
             param['linewidth'] = vis_param_set.WIDTH
             params.append(param)
         return params
+    
+
+class AccountVisualization:
+    def __init__(self):
+        pass
 
 if __name__ == '__main__':
     vis = Visualization(None)

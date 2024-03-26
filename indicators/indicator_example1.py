@@ -19,5 +19,5 @@ class IndicatorExample(SystemIndicator):
         return [data.Close[0]]
 
     def calculate(self, data) -> List[Number]:
-        print(self.param1)
+        # print(self[1])
         return [data.iloc[0].Close]
