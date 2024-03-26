@@ -54,8 +54,8 @@ ax.xaxis.set_major_formatter(MyFormatter(data['Date'], '%Y-%m-%d %H:%M'))
 fig.autofmt_xdate()
 
 #rotate x-axis tick labels
-locs = [1, 20, 40, 60]
-plt.xticks(locs, rotation=0, ha='center')
+# locs = [1, 20, 40, 60]
+# plt.xticks(locs, rotation=0, ha='center')
 
 #define up and down prices
 up = data[data.Close>=data.Open]
@@ -88,9 +88,12 @@ def animate(i):
     # fig.canvas.draw()
 
     return ax1.patches
-    
 
-ani = animation.FuncAnimation(fig, animate, range(55), interval=0, blit=True)
+def init():
+    print("init")
+    return ax1.patches
+    
+# ani = animation.FuncAnimation(fig, animate, range(55), interval=0, blit=True)
 
 #display candlestick chart
 plt.show()

@@ -2,6 +2,7 @@ from typing import Dict, List
 from numbers import Number
 import numpy as np
 import pandas as pd
+import time as t
 
 import data_manager as dm
 from visualizations import DataSourceInteraface, VisualizationParams

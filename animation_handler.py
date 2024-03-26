@@ -1,3 +1,4 @@
+from time import time
 import matplotlib.animation as animation
 
 class EventSource:
@@ -23,8 +24,10 @@ class EventSource:
     def call(self, done_event, *args):
         print("callback", args[0].core_data_idx)
         if self.running and self.func is not None:
+            start = time()
             self.func(*args)
-            done_event.set()
+            print("vis loop", time()-start)
+        done_event.set()
 
         if not self.running:
             print("[EventSource] Trying to run callback while not running, "
@@ -38,6 +41,9 @@ class AnimationHandler(animation.Animation):
         self._func = func
         self._init_func = init_func
 
+        # self.event_source = EventSource()
+        # self._blit = False
+        # self._init_draw()
         animation.Animation.__init__(self, fig, event_source=EventSource(), blit=blit)
 
     
@@ -79,6 +85,7 @@ class AnimationHandler(animation.Animation):
 
             self._blit_cache.clear()  # clear cached background - trigger saving new background
 
+        # new_artists = self._func(framedata)
         self._drawn_artists = new_artists
 
         if self._blit:
@@ -149,3 +156,11 @@ class AnimationHandler(animation.Animation):
         # After rendering all the needed artists, blit each axes individually.
         for ax in updated_ax:
             ax.figure.canvas.blit(ax.clipbox)       # changed this line to support blitting x and y labels
+
+
+    def reinit(self):
+        self.event_source.stop()
+        self._blit_cache.clear()
+        self._init_draw()
+        self._post_draw(None, False)
+        self.event_source.start()
