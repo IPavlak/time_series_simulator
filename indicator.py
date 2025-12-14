@@ -50,7 +50,7 @@ class SystemIndicator(DataSourceInteraface):
 
     def init(self, init_idx, n=100):
         self.output = np.zeros((self.data.shape[0], 1))
-        self.output[:] = np.NaN
+        self.output[:] = np.nan
         
         init_start_idx = max(1, init_idx-n)
         for index in range(init_start_idx, init_idx+1):
@@ -65,7 +65,7 @@ class SystemIndicator(DataSourceInteraface):
 
     def reset_last_output(self, idx):
         for i in range(idx, idx-self.last_output_size, -1):
-            self.output[i] = np.NaN
+            self.output[i] = np.nan
 
     def update(self, input_data, data_idx):
         self.data_idx = data_idx
