@@ -65,10 +65,10 @@ class TraderHandler:
                                            'Low':   framedata.curr_candle.Low,
                                            'Close': framedata.curr_candle.Close},  index=[0])
             # add current candle to input data at index=0 and reset indexes
-            input_data = current_candle.append(input_data[::-1], ignore_index=True)
+            input_data = pd.concat([current_candle, input_data[::-1]], ignore_index=True)
         else:
             # slicing is faster than getting single data frame - flag as dependant on data structure
-            input_data = self.data[self.data_idx : self.data_idx+1].append(input_data[::-1], ignore_index=True)
+            input_data = pd.concat([self.data[self.data_idx : self.data_idx+1], input_data[::-1]], ignore_index=True)
 
         for trader in self.traders.values():
             trader.update(input_data, self.data_idx)
