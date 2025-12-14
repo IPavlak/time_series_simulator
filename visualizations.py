@@ -164,7 +164,8 @@ class Visualization(FigureCanvas):
 
     def _init_draw(self):
         if self.data_frame is None:
-            raise Exception("[Visualization] Init data frame was not set")
+            print("[Visualization][_init_draw] Init data frame was not set")
+            return [] # returning list of artists
         print("_init_func", self.data_frame.Date.iloc[0], self.data_frame.Open.iloc[2] < self.data_frame.Close.iloc[2])
 
         self.frame_size = int( self.fig.get_size_inches()[0] * self.bars_per_inch ) 

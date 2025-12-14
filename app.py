@@ -11,7 +11,8 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QDesktopWidget
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 # App
-from ui.main import *
+# from ui.main import *
+from ui.main_win_backend import *
 from visualizations import *
 from core_simulator import *
 
@@ -57,13 +58,6 @@ class Communicate(QtCore.QObject):
 ''' End Class '''
 
 
-def connectSimAndUI(ui, sim):
-    ui.play_btn.clicked.connect(sim.start)
-    ui.pause_btn.clicked.connect(sim.pause)
-    ui.stop_btn.clicked.connect(sim.stop)
-    ui.prev_btn.clicked.connect(sim.step_backward)
-    ui.next_btn.clicked.connect(sim.step_forward)
-
 def runSim():
     start_time = pd.Timestamp('2019-1-3 00:00')
     stop_time = pd.Timestamp('2019-1-6 00:00')
@@ -75,7 +69,6 @@ def runSim():
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    win = QMainWindow()
 
     print("screen size ", QDesktopWidget().screenGeometry(-1), QDesktopWidget().availableGeometry())
     g = app.desktop().availableGeometry(-1)
@@ -95,13 +88,10 @@ if __name__ == '__main__':
     sim = Simulator(comm, vis, 1.2)
 
     ### User Interface
-    ui = UI()
-    ui.setup_ui(win, vis)
-    connectSimAndUI(ui, sim)
-
+    ui = UI(sim)
 
     runSim()
 
-    win.show()
+    ui.show()
     
     sys.exit(app.exec_())
