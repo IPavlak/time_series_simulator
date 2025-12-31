@@ -246,11 +246,13 @@ class Visualization(QGraphicsView):
         self.frame_size = 100 # Initial guess
 
         # Visual settings
-        self.width_oc = 0.72
+        self.width_oc = 0.72     # Width of one candle in scene coordinates - determines spacing
         self.color_up = Qt.white
         self.color_down = Qt.black
-        self.x_margin = 5
-        self.y_margin = 0.05
+        self.x_margin = 80       # Padding in pixels at the right side of the chart
+        self.y_margin = 30   # in pixels
+        
+        self.last_right_scene_x = 0 # Track the right edge for resizing
 
         # State
         self._running = True
@@ -331,7 +333,7 @@ class Visualization(QGraphicsView):
     def _update_current_candle(self, candle, idx):
         pass # Deprecated
 
-    def _ensure_visible(self, idx=None):
+    def _ensure_visible(self, idx=None, anchor_right_x=None):
         if self._updating_view:
             return
 
@@ -343,19 +345,31 @@ class Visualization(QGraphicsView):
             
             sx = dpi / self.bars_per_inch
             
+            # Calculate margin in scene units
+            margin_scene = self.x_margin / sx
+            
             # 2. Determine visible X range in Scene Coordinates
             viewport_rect = self.viewport().rect()
             view_width_scene = viewport_rect.width() / sx
             
             if idx is not None:
                 # Force view to end (latest candles)
-                target_right_x = idx + self.width_oc / 2
+                # Position: Candle Right Edge + Margin = Viewport Right Edge
+                target_right_x = idx + self.width_oc / 2 + margin_scene
                 target_center_x = target_right_x - (view_width_scene / 2)
+            elif anchor_right_x is not None:
+                # Anchor to specific scene X (used during resize to preserve position)
+                current_right_x = anchor_right_x
+                # Clamp to latest candle + margin
+                max_right = self.frame_idx + self.width_oc / 2 + margin_scene
+                current_right_x = min(current_right_x, max_right)
+                target_center_x = current_right_x - (view_width_scene / 2)
             else:
-                # Preserve current right edge (last candle)
+                # Preserve current right edge (last candle) - used while scrolling
                 current_right_x = self.mapToScene(viewport_rect.width(), 0).x()
-                # Clamp to latest candle to prevent looking into empty future
-                current_right_x = min(current_right_x, self.frame_idx + self.width_oc / 2)
+                # Clamp to latest candle + margin
+                max_right = self.frame_idx + self.width_oc / 2 + margin_scene
+                current_right_x = min(current_right_x, max_right)
 
                 target_center_x = current_right_x - (view_width_scene / 2)
             
@@ -422,8 +436,7 @@ class Visualization(QGraphicsView):
                 if viewport_h < 20: return
                 
                 # Reserve pixels for margin (top and bottom)
-                pixel_margin = 30
-                available_h = viewport_h - 2 * pixel_margin
+                available_h = viewport_h - 2 * self.y_margin
                 if available_h <= 0: available_h = viewport_h
                 
                 target_sy = available_h / diff
@@ -431,7 +444,8 @@ class Visualization(QGraphicsView):
                 # Update Scene Rect to match the area we want to show.
                 # X: Full data range (0 to last candle + margin) to allow scrolling
                 # Y: Visible range (min_y to max_y) for correct vertical centering
-                scene_width = max(self.frame_idx + 10, max_x) # Ensure it covers at least to max_x
+                scene_end_x = self.frame_idx + self.width_oc / 2 + margin_scene
+                scene_width = max(scene_end_x, max_x) 
                 self.setSceneRect(0, min_y, scene_width, max_y - min_y)
 
                 # 4. Apply Transform
@@ -442,6 +456,9 @@ class Visualization(QGraphicsView):
                 # 5. Restore Center
                 target_center_y = (min_y + max_y) / 2
                 self.centerOn(target_center_x, target_center_y)
+                
+                # Save state for resize anchoring
+                self.last_right_scene_x = target_center_x + (view_width_scene / 2)
         finally:
             self._updating_view = False
 
@@ -460,7 +477,8 @@ class Visualization(QGraphicsView):
             item = self.candle_pool[k]
             i = start_i + k
             
-            if 0 <= i < len(self.data):
+            # Only draw valid data up to the current simulation frame
+            if 0 <= i <= self.frame_idx and i < len(self.data):
                 # Check if it's the current candle being updated
                 if i == self.frame_idx and self.current_candle_cache:
                     c = self.current_candle_cache
@@ -496,8 +514,8 @@ class Visualization(QGraphicsView):
         self.axis_overlay.resize(self.size())
         super().resizeEvent(event)
         # Re-calculate visibility and scaling when view size changes
-        # Pass None to preserve current view position (history)
-        self._ensure_visible(None)
+        # Use the captured anchor to keep the rightmost candle visible
+        self._ensure_visible(idx=None, anchor_right_x=self.last_right_scene_x)
 
     def add_plot(self, data_source, vis_params, **kwargs):
         params = self._vis_params_to_plot_params(vis_params)
