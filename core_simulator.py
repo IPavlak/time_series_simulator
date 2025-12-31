@@ -117,8 +117,8 @@ class Simulator:
                 self.is_input_valid = True
 
                 self.vis.set_init_frame(self.frame_data)
-                # if vis is running   # maybe unnecessary
-                    # self._draw_init_frame()
+                if self.vis.is_running():   # maybe unnecessary
+                    self._draw_init_frame()
                     
                 
                 # for indicator in self.indicators:

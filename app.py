@@ -31,7 +31,6 @@ def testRun(start_vis, stop_vis):
     frame_vis_event.set()
     
     # comm.start_vis_signal.emit()
-    vis.start()
     for i in range(8):
         # print(i)
         # self.vis.update_frame_idx(i)
@@ -82,7 +81,7 @@ if __name__ == '__main__':
 
     ### Communication  (Slots and signals - Qt framework)
     comm = Communicate()
-    comm.update_vis_signal.connect(vis.animation.event_source.call)
+    comm.update_vis_signal.connect(vis.update_frame)
 
     ### Simulator
     sim = Simulator(comm, vis, 1.2)

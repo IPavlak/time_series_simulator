@@ -6,11 +6,6 @@ from visualizations import Visualization
 
 
 
-DOWN_ICON = QtGui.QIcon.fromTheme("go-down")
-UP_ICON = QtGui.QIcon.fromTheme("go-up")
-PLAY_ICON = QtGui.QIcon.fromTheme("media-playback-start")
-PAUSE_ICON = QtGui.QIcon.fromTheme("media-playback-pause")
-
 class UI(QMainWindow, Ui_MainWindow):
     def __init__(self, sim : Simulator, vis: Visualization):
         super(UI, self).__init__()
@@ -22,6 +17,21 @@ class UI(QMainWindow, Ui_MainWindow):
 
         # set up user interface from generated code
         self.setupUi(self)
+
+        # Fix icons using standard Qt style
+        self.icon_play = self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay)
+        self.icon_pause = self.style().standardIcon(QtWidgets.QStyle.SP_MediaPause)
+        self.icon_stop = self.style().standardIcon(QtWidgets.QStyle.SP_MediaStop)
+        self.icon_forward = self.style().standardIcon(QtWidgets.QStyle.SP_MediaSeekForward)
+        self.icon_backward = self.style().standardIcon(QtWidgets.QStyle.SP_MediaSeekBackward)
+        self.icon_up = self.style().standardIcon(QtWidgets.QStyle.SP_ArrowUp)
+        self.icon_down = self.style().standardIcon(QtWidgets.QStyle.SP_ArrowDown)
+
+        self.playToggleButton.setIcon(self.icon_play)
+        self.stopButton.setIcon(self.icon_stop)
+        self.forwardButton.setIcon(self.icon_forward)
+        self.backwardButton.setIcon(self.icon_backward)
+        self.settingsToggleButton.setIcon(self.icon_down)
 
         # custom setup that cannot be done from QT designer
         self.horizontalLayout.addWidget(self.vis)
@@ -44,10 +54,10 @@ class UI(QMainWindow, Ui_MainWindow):
         if self.settingsToggled:
             self.settingToggleContext = { 'max_height': self.settingsHlay.maximumHeight() }
             self.settingsHlay.setMaximumHeight(self.settingTabs.tabBar().height())
-            self.settingsToggleButton.setIcon(UP_ICON)
+            self.settingsToggleButton.setIcon(self.icon_up)
         else:
             self.settingsHlay.setMaximumHeight(self.settingToggleContext['max_height'])
-            self.settingsToggleButton.setIcon(DOWN_ICON)
+            self.settingsToggleButton.setIcon(self.icon_down)
 
         self.settingsToggled = not self.settingsToggled
 
@@ -55,10 +65,10 @@ class UI(QMainWindow, Ui_MainWindow):
     def on_playToggleButton_clicked(self):
         if self.sim.running:
             self.sim.pause()
-            self.playToggleButton.setIcon(PLAY_ICON)
+            self.playToggleButton.setIcon(self.icon_play)
         else:
             self.sim.start()
-            self.playToggleButton.setIcon(PAUSE_ICON)
+            self.playToggleButton.setIcon(self.icon_pause)
 
     @QtCore.pyqtSlot()
     def on_stopButton_clicked(self):
