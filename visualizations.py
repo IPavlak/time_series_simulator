@@ -219,8 +219,8 @@ class Visualization(QGraphicsView):
         # Graphics View settings
         self.setRenderHint(QPainter.Antialiasing)
         self.setDragMode(QGraphicsView.NoDrag) # We handle scrolling manually
-        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
-        self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setTransformationAnchor(QGraphicsView.NoAnchor)
+        self.setResizeAnchor(QGraphicsView.NoAnchor)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
@@ -254,8 +254,19 @@ class Visualization(QGraphicsView):
 
         # State
         self._running = True
-        self.candles = {} # Map idx -> CandleItem
+        # self.candles = {} # Map idx -> CandleItem -> Removed in favor of pool
         self.plotters = []
+        
+        # Candle Pool (Virtualization)
+        self.POOL_SIZE = 4000 # Enough for 4k resolution at 1px per candle
+        self.candle_pool = []
+        for i in range(self.POOL_SIZE):
+            item = CandleItem(0, 0, 0, 0, 0, width=self.width_oc, color_up=self.color_up, color_down=self.color_down)
+            item.setVisible(False)
+            self.scene.addItem(item)
+            self.candle_pool.append(item)
+            
+        self.current_candle_cache = None # Store current tick data
         
         # Grid and Axis
         self.grid_items = []
@@ -276,118 +287,52 @@ class Visualization(QGraphicsView):
         start_t = time()
         
         # Ensure we have the latest data reference
-        print("update_frame")
         if self.data is not dm.data:
-            print("update_frame: no dm data")
             self.data = dm.data
 
         self.frame_idx = frame_data.core_data_idx
         
-        # Determine visible range (frame_size)
-        # In the original code, frame_size was calculated based on window width.
-        # Here we can just use a fixed window or dynamic.
-        # Let's try to keep the last N candles visible.
-        # Or better, just add new candles to the scene.
-        
         # Update Data Frame (needed for plotters)
-        # We need some history for indicators
-        history_len = 200 # Default history to show
-        start_idx = max(0, self.frame_idx - history_len)
-        self.data_frame = self.data.iloc[start_idx : self.frame_idx + 1]
+        start_idx = max(0, self.frame_idx - self.frame_size + 1)
+        self.data_frame = self.data[start_idx : self.frame_idx + 1]
         
         # 1. Draw/Update Candles
-        # Check if we need to add a new candle or update the current one
         
         # If reset, clear scene
         if frame_data.reset:
-            self.scene.clear()
-            self.candles = {}
-            self.plotters = [] # Re-add plotters? No, plotters are added via add_plot
-            # We need to persist plotters but clear their paths?
-            # The plotters list is stored in self.plotters.
-            # We should clear the scene but keep the plotter objects and re-add their items.
-            # Actually, scene.clear() removes everything.
-            # We need to re-initialize plotters' items.
+            # Reset pool items
+            for item in self.candle_pool:
+                item.setVisible(False)
             for p in self.plotters:
-                p.paths = [] # Reset paths
-            
-            # Re-draw history up to current frame
-            # For performance, maybe just draw visible range?
-            # Let's draw the visible range defined by data_frame
-            self._draw_candles(self.data_frame)
+                p.paths = [] 
         
+        # Cache current candle for high-speed access
+        if frame_data.curr_candle:
+            self.current_candle_cache = frame_data.curr_candle
         else:
-            # Update current candle (the one changing with ticks)
-            if frame_data.curr_candle is not None:
-                self._update_current_candle(frame_data.curr_candle, self.frame_idx)
-            
-            # If we moved to a new frame (completed candle), ensure it's finalized
-            # The simulator logic:
-            # If use_ticks=False: frame_idx increments, curr_candle is None (or irrelevant for history)
-            # If use_ticks=True: frame_idx stays same while tick updates curr_candle. When candle closes, frame_idx increments.
-            
-            # We just need to ensure the candle at frame_idx exists and is updated.
-            # And if frame_idx > last_idx, we add new candle.
-            
-            # Check if we have gaps (e.g. skipped frames)
-            last_drawn_idx = max(self.candles.keys()) if self.candles else -1
-            
-            if self.frame_idx > last_drawn_idx:
-                # Add missing candles
-                sub_df = self.data.iloc[last_drawn_idx+1 : self.frame_idx+1]
-                self._draw_candles(sub_df)
-            elif self.frame_idx in self.candles:
-                # Update existing candle (e.g. tick update)
-                # If curr_candle is provided, use it. Otherwise use data from dataframe (which might be static)
-                if frame_data.curr_candle:
-                    c = frame_data.curr_candle
-                    self.candles[self.frame_idx].update_data(c.Open, c.High, c.Low, c.Close)
-                else:
-                    # Just ensure it matches data (maybe updated by sim)
-                    row = self.data.iloc[self.frame_idx]
-                    self.candles[self.frame_idx].update_data(row.Open, row.High, row.Low, row.Close)
+            self.current_candle_cache = None
 
         # 2. Update Plots
         for plotter in self.plotters:
-            # We pass the indices as x_values
             plotter.update_plots(self.data_frame.index, self.data.Date[self.frame_idx], len(self.data_frame))
 
         # 3. Auto-scroll / Fit View
-        # Only auto-scroll if we are at the right edge?
         self.axis_overlay.update()
         # For now, always keep the latest candle in view
         self._ensure_visible(self.frame_idx)
 
-        # 4. Update Grid/Axes
-        # self._update_grid() # Expensive to do every frame?
-
         # Signal done
         if done_event:
             done_event.set()
-            
-        # print(f"Draw time: {time() - start_t:.4f}s")
 
     def _draw_candles(self, df):
-        for idx, row in df.iterrows():
-            if idx in self.candles:
-                self.candles[idx].update_data(row.Open, row.High, row.Low, row.Close)
-            else:
-                item = CandleItem(idx, row.Open, row.High, row.Low, row.Close, 
-                                  width=self.width_oc, color_up=self.color_up, color_down=self.color_down)
-                self.scene.addItem(item)
-                self.candles[idx] = item
+        pass # Deprecated
 
     def _update_current_candle(self, candle, idx):
-        if idx in self.candles:
-            self.candles[idx].update_data(candle.Open, candle.High, candle.Low, candle.Close)
-        else:
-            item = CandleItem(idx, candle.Open, candle.High, candle.Low, candle.Close,
-                              width=self.width_oc, color_up=self.color_up, color_down=self.color_down)
-            self.scene.addItem(item)
-            self.candles[idx] = item
+        pass # Deprecated
 
     def _ensure_visible(self, idx=None):
-        if not self.candles or self._updating_view:
+        if self._updating_view:
             return
 
         self._updating_view = True
@@ -404,44 +349,69 @@ class Visualization(QGraphicsView):
             
             if idx is not None:
                 # Force view to end (latest candles)
-                # Align right edge: idx + margin
-                target_center_x = (idx + 2) - (view_width_scene / 2)
+                target_right_x = idx + self.width_oc / 2
+                target_center_x = target_right_x - (view_width_scene / 2)
             else:
-                # Preserve current center
-                target_center_x = self.mapToScene(viewport_rect.center()).x()
+                # Preserve current right edge (last candle)
+                current_right_x = self.mapToScene(viewport_rect.width(), 0).x()
+                # Clamp to latest candle to prevent looking into empty future
+                current_right_x = min(current_right_x, self.frame_idx + self.width_oc / 2)
+
+                target_center_x = current_right_x - (view_width_scene / 2)
             
             min_x = target_center_x - (view_width_scene / 2)
             max_x = target_center_x + (view_width_scene / 2)
             
-            # 3. Calculate Y range for candles in [min_x, max_x]
-            min_y = float('inf')
-            max_y = float('-inf')
-            found = False
-            
-            # Optimize iteration
+            # 3. Identify indices to draw
             half_width = self.width_oc / 2
             start_i = int(math.ceil(min_x - half_width))
             end_i = int(math.floor(max_x + half_width))
             
-            # Safety clamp
-            if (end_i - start_i) > 5000:
-                 center_i = int((start_i + end_i) / 2)
-                 start_i = max(start_i, center_i - 2500)
-                 end_i = min(end_i, center_i + 2500)
-    
-            for i in range(start_i, end_i + 1):
-                if i in self.candles:
-                    c = self.candles[i]
-                    min_y = min(min_y, c.low)
-                    max_y = max(max_y, c.high)
+            # Clamp indices
+            start_i = max(0, start_i)
+            end_i = min(len(self.data) - 1, end_i)
+            
+            # 4. Update the candles in the pool
+            self._update_visible_candles(start_i, end_i)
+            
+            # 5. Calculate Y range for these candles
+            # We can use the data directly for speed
+            start_data = max(0, start_i)
+            end_data = min(len(self.data) - 1, end_i)
+            
+            min_y = float('inf')
+            max_y = float('-inf')
+            found = False
+            
+            if start_data <= end_data:
+                # Extract sub-arrays
+                sub_lows = self.data.Low.values[start_data : end_data + 1]
+                sub_highs = self.data.High.values[start_data : end_data + 1]
+                
+                if len(sub_lows) > 0:
+                    min_y = np.min(sub_lows)
+                    max_y = np.max(sub_highs)
                     found = True
+                
+                # Check current candle if in range
+                if self.frame_idx >= start_data and self.frame_idx <= end_data and self.current_candle_cache:
+                     c = self.current_candle_cache
+                     min_y = min(min_y, c.Low)
+                     max_y = max(max_y, c.High)
             
             # Always include the target candle if specified
-            if idx is not None and idx in self.candles:
-                 c = self.candles[idx]
-                 min_y = min(min_y, c.low)
-                 max_y = max(max_y, c.high)
-                 found = True
+            if idx is not None:
+                 # If idx is outside the geometric range (shouldn't happen if we centered on it),
+                 # we might miss it in the array check.
+                 if idx == self.frame_idx and self.current_candle_cache:
+                     c = self.current_candle_cache
+                     min_y = min(min_y, c.Low)
+                     max_y = max(max_y, c.High)
+                     found = True
+                 elif 0 <= idx < len(self.data):
+                     min_y = min(min_y, self.data.Low.values[idx])
+                     max_y = max(max_y, self.data.High.values[idx])
+                     found = True
                  
             if found:
                 diff = max_y - min_y
@@ -458,6 +428,12 @@ class Visualization(QGraphicsView):
                 
                 target_sy = available_h / diff
                 
+                # Update Scene Rect to match the area we want to show.
+                # X: Full data range (0 to last candle + margin) to allow scrolling
+                # Y: Visible range (min_y to max_y) for correct vertical centering
+                scene_width = max(self.frame_idx + 10, max_x) # Ensure it covers at least to max_x
+                self.setSceneRect(0, min_y, scene_width, max_y - min_y)
+
                 # 4. Apply Transform
                 new_transform = QTransform()
                 new_transform.scale(sx, -abs(target_sy))
@@ -468,6 +444,49 @@ class Visualization(QGraphicsView):
                 self.centerOn(target_center_x, target_center_y)
         finally:
             self._updating_view = False
+
+    def _update_visible_candles(self, start_i, end_i):
+        # Map data indices to pool items linearly
+        # We use the first N items of the pool to represent the N visible candles.
+        # This allows us to easily hide the remaining items using self.frame_size (previous count).
+        
+        num_visible = end_i - start_i + 1
+        
+        # Ensure we don't exceed pool size
+        if num_visible > self.POOL_SIZE:
+            num_visible = self.POOL_SIZE
+            
+        for k in range(num_visible):
+            item = self.candle_pool[k]
+            i = start_i + k
+            
+            if 0 <= i < len(self.data):
+                # Check if it's the current candle being updated
+                if i == self.frame_idx and self.current_candle_cache:
+                    c = self.current_candle_cache
+                    item.update_data(c.Open, c.High, c.Low, c.Close)
+                else:
+                    # Fast access
+                    o = self.data.Open.values[i]
+                    h = self.data.High.values[i]
+                    l = self.data.Low.values[i]
+                    c = self.data.Close.values[i]
+                    item.update_data(o, h, l, c)
+                
+                item.setPos(i, 0)
+                item.setVisible(True)
+            else:
+                item.setVisible(False)
+        
+        # Hide items that were visible last time but not anymore
+        # self.frame_size stores the number of candles used in the last update
+        if self.frame_size > num_visible:
+            for k in range(num_visible, self.frame_size):
+                if k < self.POOL_SIZE:
+                    self.candle_pool[k].setVisible(False)
+        
+        # Update frame_size for next time
+        self.frame_size = num_visible
 
     def _on_scroll(self):
         self.axis_overlay.update()
