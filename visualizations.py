@@ -188,7 +188,7 @@ class AxisOverlay(QtWidgets.QWidget):
                         # Draw Text
                         painter.setPen(text_pen)
                         try:
-                            date_val = view.data.Date.iloc[i]
+                            date_val = view.data.Date[i]
                             if isinstance(date_val, pd.Timestamp):
                                 date_str = date_val.strftime('%H:%M\n%d-%m')
                             else:
