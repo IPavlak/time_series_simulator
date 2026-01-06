@@ -79,6 +79,7 @@ class Simulator:
             if self.use_ticks:
                 self.tick_data_idx = get_idx_from_time(self.tick_data, self.start_time)
             self.frame_data.curr_candle = None
+            # TODO: reset indicators and traders
 
     def setup_simulator(self, data_file, start_time, stop_time, interval, use_ticks, tick_data_file=None):
         if self.running:
@@ -115,13 +116,10 @@ class Simulator:
 
                 self.is_input_valid = True
 
-                if self.vis.is_running():
+                self.vis.set_init_frame(self.frame_data)
+                if self.vis.is_running():   # maybe unnecessary
                     self._draw_init_frame()
-                else:
-                    self.vis.set_init_frame(self.frame_data)
-                
-                # for indicator in self.indicators:
-                #     indicator.init(self.frame_data.core_data_idx)
+                    
 
     def _set_interval(self, interval):
         self.interval = interval
@@ -167,19 +165,12 @@ class Simulator:
             start_time = time()
 
             self._update_frame_data()
-            # self.frame_data.core_data_idx += 1
-            # self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
-            # self.frame_data.reset = False
 
             self.indicator_handler.update(self.frame_data)
             self.trader_handler.update(self.frame_data)
 
             # draw frame
             self._draw_frame()
-            # frame_vis_event.wait()
-            # print(self.frame_data.core_data_idx)
-            # frame_vis_event.clear()
-            # self.comm.update_vis_signal.emit(frame_vis_event, deepcopy(self.frame_data)) # emit signal # TODO: make note about important paradigm when sending parameters in other threads
 
             # print("loop time", time()-start_time)
             sleep( max(0.0, self.interval-(time()-start_time) ) )
@@ -215,10 +206,7 @@ class Simulator:
             self.frame_data.time = self.data.Date[self.frame_data.core_data_idx]
 
         self.frame_data.reset = False
-    
-    # def update_indicators(self):
-    #     for indicator in self.indicators:
-    #         indicator.calculate(self.frame_data)
+
 
     def _calc_curr_candle(self, tick_candle, step, new_frame=False):
         if step > 0:

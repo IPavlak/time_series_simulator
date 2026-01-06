@@ -1,4 +1,5 @@
 from copy import deepcopy
+# from time import time
 from typing import Dict, List
 from functools import total_ordering
 from enum import Enum
@@ -287,6 +288,7 @@ class SystemTrader():
         self.data_idx = init_idx
 
     def update(self, input_data, data_idx):
+        print("trader update")
         time = input_data.Date[0]
         if self.current_time is None or time > self.current_time:
             self.data_idx = data_idx

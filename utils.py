@@ -87,7 +87,6 @@ def update_from_dict(obj, d):
                 if isinstance(value, list):
                     for m in value:
                         update_from_dict(member[-1], m)
-                        print(m, member[-1].COLOR)
                         member.append(type(member[0])())    # list elements are all same type, object has to have at least 1 element defined
                     member.pop()
                 else:
