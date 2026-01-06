@@ -1,4 +1,4 @@
-from time import sleep, time
+from time import time
 from typing import List
 import math
 
@@ -142,6 +142,11 @@ class AxisOverlay(QtWidgets.QWidget):
         painter = QPainter(self)
         view = self.parent()
         
+        # Grid settings
+        grid_pen = QPen(QColor(220, 220, 220))
+        grid_pen.setStyle(Qt.DotLine)
+        text_pen = QPen(Qt.black)
+        
         # Viewport geometry relative to the widget
         vp = view.viewport().geometry()
         
@@ -176,7 +181,12 @@ class AxisOverlay(QtWidgets.QWidget):
                         # Convert to widget coords
                         screen_x = vp.left() + view_pt.x()
                         
-                        # Draw
+                        # Draw Grid Line
+                        painter.setPen(grid_pen)
+                        painter.drawLine(int(screen_x), vp.top(), int(screen_x), vp.bottom())
+                        
+                        # Draw Text
+                        painter.setPen(text_pen)
                         try:
                             date_val = view.data.Date.iloc[i]
                             if isinstance(date_val, pd.Timestamp):
@@ -208,6 +218,12 @@ class AxisOverlay(QtWidgets.QWidget):
                 view_pt = view.mapFromScene(QPointF(0, price))
                 screen_y = vp.top() + view_pt.y()
                 
+                # Draw Grid Line
+                painter.setPen(grid_pen)
+                painter.drawLine(vp.left(), int(screen_y), vp.right(), int(screen_y))
+
+                # Draw Label
+                painter.setPen(text_pen)
                 painter.drawText(int(x_pos), int(screen_y) + 5, f"{price:.5f}")
 
 class Visualization(QGraphicsView):
@@ -250,7 +266,7 @@ class Visualization(QGraphicsView):
         self.color_up = Qt.white
         self.color_down = Qt.black
         self.x_margin = 80       # Padding in pixels at the right side of the chart
-        self.y_margin = 30   # in pixels
+        self.y_margin = 30       # Padding in pixels at the bottom of the chart
         
         self.last_right_scene_x = 0 # Track the right edge for resizing
 
