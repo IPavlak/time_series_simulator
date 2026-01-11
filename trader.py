@@ -37,6 +37,7 @@ class OrderStatus(Enum):
 class Order:
     id = -1
     type = OrderType(-1)
+    amount = 0.0
     open_price = 0.0
     stop_loss = 0.0
     take_profit = 0.0
@@ -47,7 +48,7 @@ class Order:
 
     @property
     def profit(self):
-        return self.close_price - self.open_price
+        return (self.close_price - self.open_price) * self.amount
 
     def __lt__(self, other):
         if other.status == OrderStatus.ACTIVE:
@@ -167,7 +168,7 @@ class SystemTrader():
         return [self.parameters.visualization[1]]
 
 
-    def create_order(self, order_type, stop_loss, take_profit, strike_price=None):
+    def create_order(self, order_type, amount, stop_loss, take_profit, strike_price=None):
         if not self._are_order_params_valid(self.current_price, order_type, stop_loss, take_profit, strike_price):
             print("[{}][SystemTrader] Order parameters are not valid, disregarding order: "
                   "(order type: {}, current price: {}, stop loss: {}, take profit: {}, strike price: {})".format(
@@ -177,6 +178,7 @@ class SystemTrader():
         order = Order()
         order.id = int(uuid4())
         order.type = order_type
+        order.amount = amount
         order.stop_loss = stop_loss
         order.take_profit = take_profit
         order.open_time = self.current_time
@@ -214,9 +216,7 @@ class SystemTrader():
     def _update_orders(self):
         for order in self.active_orders:
             if self._is_stop_loss_reached(self.current_price, order) or self._is_take_profit_reached(self.current_price, order):
-                order.close_price = self.current_price
-                order.close_time = self.current_time
-                order.status = OrderStatus.CLOSED
+                self.close_order(order.id)
         
         for order in self.pending_orders:
             if self._is_strike_price_reached(self.current_price, order):
