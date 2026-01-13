@@ -288,11 +288,10 @@ class SystemTrader():
         self.data_idx = init_idx
 
     def update(self, input_data, data_idx):
-        print("trader update")
-        time = input_data.Date[0]
+        time = input_data[0].Date
         if self.current_time is None or time > self.current_time:
             self.data_idx = data_idx
-            self.current_price = input_data.Close[0]
+            self.current_price = input_data[0].Close
             self.current_time = time
             self._update_orders()
             self.calculate(input_data)

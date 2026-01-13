@@ -55,7 +55,8 @@ class TraderHandler:
 
     def update(self, framedata):
         self.data_idx = framedata.core_data_idx
-        input_data = self.data[0:self.data_idx]
+        input_data = self.data[0:self.data_idx+1]
+        input_data.reverse()
 
         # TODO: BENCHMARK
         if framedata.curr_candle is not None:
@@ -64,11 +65,10 @@ class TraderHandler:
                                            'High':  framedata.curr_candle.High,
                                            'Low':   framedata.curr_candle.Low,
                                            'Close': framedata.curr_candle.Close},  index=[0])
-            # add current candle to input data at index=0 and reset indexes
-            input_data = pd.concat([current_candle, input_data[::-1]], ignore_index=True)
+            # add current candle to input data at index=0
+            input_data = dm.DataView(input_data[1::], current_candle)
         else:
-            # slicing is faster than getting single data frame - flag as dependant on data structure
-            input_data = pd.concat([self.data[self.data_idx : self.data_idx+1], input_data[::-1]], ignore_index=True)
+            input_data = dm.DataView(input_data)
 
         for trader in self.traders.values():
             trader.update(input_data, self.data_idx)
