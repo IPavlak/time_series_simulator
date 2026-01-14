@@ -61,6 +61,34 @@ class DataManager:
         self.data = self.data[::-1]
         self.data.reset_index(inplace=True, drop=True)
 
+'''
+This class is used as interface to access data in user code
+It is a wrapper around pandas DataFrame, current candle is a DataFrame with a single entry
+'''
+class DataView:
+    def __init__(self, dataframe, current_candle = None):
+        self.dataframe = dataframe
+        self.current_candle = current_candle
+
+    def __getitem__(self, item):
+        if type(item) == int:
+            if self.current_candle is None:
+                return self.dataframe.iloc[item]    
+            elif item == 0:
+                return self.current_candle
+            else:
+                return self.dataframe.iloc[item-1]
+        elif type(item) == slice:
+            if self.current_candle is None:
+                return DataView(self.dataframe[item])
+            elif item.start == 0:
+                return DataView(self.dataframe[item.start+1:item.stop], self.current_candle)
+            else:
+                return DataView(self.dataframe[item])
+        else:
+            raise TypeError("Invalid argument type.")
+
+
 data = DataManager()
 tick_data = DataManager()
 

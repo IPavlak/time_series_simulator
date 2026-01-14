@@ -16,8 +16,8 @@ parameters = {
 class IndicatorExample(SystemIndicator):
     
     def initialize(self, data) -> List[Number]: #optional
-        return [data.Close[0]]
+        return [data[0].Close]
 
     def calculate(self, data) -> List[Number]:
         # print(self[1])
-        return [data.iloc[0].Close]
+        return [data[0].Close]

@@ -20,10 +20,10 @@ class TraderExample(SystemTrader):
     #     return [data.Close[0]]
 
     def calculate(self, data):
-        # print(data.Close[0])
-        if data.Close[0] > 1.1350 and len(self.orders) == 0:
+        # print(data[0].Close)
+        if data[0].Close > 1.1350 and len(self.orders) == 0:
             order = self.create_order(OrderType.BUY, 1.1342, 2.1365)
             print("creating order - ", order)
-        elif data.Close[0] > 1.14 and len(self.orders) < 2:
+        elif data[0].Close > 1.14 and len(self.orders) < 2:
             order = self.create_order(OrderType.SELL, 1.143, 1.132)
             print("creating order - ", order)
