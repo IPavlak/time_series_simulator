@@ -18,9 +18,10 @@ class TraderDef:
 class TraderHandler:
     ''' TraderHandler is a class that takes care of all traders '''
 
-    def __init__(self, indicator_handler):
+    def __init__(self, indicator_handler, start_balance=10000.0):
         self.data = dm.data
         self.data_idx = 0
+        self.start_balance = start_balance
         self.traders = OrderedDict()
         self.indicator_handler = indicator_handler
 
@@ -47,7 +48,7 @@ class TraderHandler:
 
         trader = trader_def.trader_class(trader_name, trader_parameters)
         trader.set_depending_indicators(depedency_indicators)
-        # trader.init(init_frame_idx) # TODO: check
+        trader.init(init_frame_idx)
 
         self.traders[str(uuid4())] = trader
 
@@ -73,6 +74,17 @@ class TraderHandler:
         for trader in self.traders.values():
             trader.update(input_data, self.data_idx)
 
+
+    def get_balance(self, data_idx, trader_name = None):
+        balance = self.start_balance
+        if trader_name is None:
+            for trader in self.traders.values():
+                balance += trader.get_profit(data_idx)
+        else:
+            for trader in self.traders.values():
+                if trader.name == trader_name:
+                    balance += trader.get_profit(data_idx)
+        return balance
 
     def _get_trader_def(self, trader_module_name: str):
         trader_module = import_module(trader_module_name)

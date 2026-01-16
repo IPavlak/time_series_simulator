@@ -131,6 +131,8 @@ class SystemTrader():
         self.orders = {} #(id, Order)
         self.spread = 0.0
 
+        self.profit = [] # indexed by data index, other possibility (data_idx, profit)
+
         self.buy_orders_data_source = TraderOrderDataSourceWrapper(self, [OrderType.BUY])
         self.sell_orders_data_source = TraderOrderDataSourceWrapper(self, [OrderType.SELL])
         self.buy_pend_orders_data_source = TraderOrderDataSourceWrapper(self, [OrderType.BUY_LIMIT, OrderType.BUY_STOP])
@@ -166,6 +168,14 @@ class SystemTrader():
     
     def get_sell_vis_params(self):
         return [self.parameters.visualization[1]]
+    
+    def get_profit(self, data_idx=None):
+        if data_idx is None:
+            return self.profit
+        else:
+            while np.isnan(self.profit[data_idx]) and data_idx > 0:
+                data_idx -= 1
+            return self.profit[data_idx] if not np.isnan(self.profit[data_idx]) else 0.0
 
 
     def create_order(self, order_type, amount, stop_loss, take_profit, strike_price=None):
@@ -212,6 +222,7 @@ class SystemTrader():
             order.close_price = self.current_price
             order.close_time = self.current_time
             order.status = OrderStatus.CLOSED
+            self.profit[self.data_idx] =  self.get_profit(self.data_idx) + order.profit
 
     def _update_orders(self):
         for order in self.active_orders:
@@ -275,9 +286,19 @@ class SystemTrader():
                 time = order.open_time
                 last_order = order
         return last_order
+    
+    def update_profit(self, data_idx):
+        profit = self.get_profit(data_idx)
+        while np.isnan(self.profit[data_idx]) and data_idx > 0:
+            self.profit[data_idx] = profit
+            data_idx -= 1
+        
 
-    # TODO: when needed
     def init(self, init_idx, n=1):
+        self.profit = np.zeros((self.data.shape[0], 1))
+        self.profit[:] = np.nan
+        self.profit[0:init_idx+1] = 0.0
+
         init_start_idx = max(1, init_idx-n)
         for index in range(init_start_idx, init_idx+1):
             input_data = self.data[0:index+1]
@@ -293,6 +314,7 @@ class SystemTrader():
             self.data_idx = data_idx
             self.current_price = input_data[0].Close
             self.current_time = time
+            self.update_profit(self.data_idx)
             self._update_orders()
             self.calculate(input_data)
 
