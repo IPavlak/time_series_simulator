@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from core_simulator import Simulator
 from ui.main_win import Ui_MainWindow
 from visualizations import Visualization
-
+from ui.balance_vis import BalanceWidget
 
 
 class UI(QMainWindow, Ui_MainWindow):
@@ -37,6 +37,11 @@ class UI(QMainWindow, Ui_MainWindow):
         self.horizontalLayout.addWidget(self.vis)
         self.settingsToggled = True
 
+        # Custom Balance Graph
+        self.balance_widget = BalanceWidget(self.sim.trader_handler, self.vis)
+        self.tab1_layout = QtWidgets.QVBoxLayout(self.tab)
+        self.tab1_layout.addWidget(self.balance_widget)
+
         self.playToggleButton.setShortcut("Space")
         self.forwardButton.setShortcut("Right")
         self.backwardButton.setShortcut("Left")
@@ -48,6 +53,9 @@ class UI(QMainWindow, Ui_MainWindow):
         self.backwardButton.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
         self.stopButton.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
 
+
+    def update_balance_vis(self, event, frame_data):
+        self.balance_widget.update_data(frame_data)
 
     @QtCore.pyqtSlot()
     def on_settingsToggleButton_clicked(self):

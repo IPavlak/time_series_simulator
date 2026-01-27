@@ -5,6 +5,7 @@ from uuid import uuid4
 from inspect import getmembers, isclass
 
 import pandas as pd
+import numpy as np
 
 import data_manager as dm
 from utils import *
@@ -21,12 +22,21 @@ class TraderHandler:
     def __init__(self, indicator_handler, start_balance=10000.0):
         self.data = dm.data
         self.data_idx = 0
-        self.start_balance = start_balance
         self.traders = OrderedDict()
         self.indicator_handler = indicator_handler
+        self.start_balance = start_balance
+        self.account_balance = None # initialized at set_init_frame
+        
+
+    # must be called before add_trader to set init data_idx
+    def set_init_frame(self, data_idx):
+        self.account_balance = np.zeros((self.data.shape[0], 1))
+        self.account_balance[:] = np.nan
+        self.data_idx = data_idx
+        self.account_balance[0:self.data_idx] = self.start_balance
 
     # TODO: check for circular dependencies
-    def add_trader(self, trader_name: str, trader_module: str, trader_parameters: Dict, init_frame_idx):
+    def add_trader(self, trader_name: str, trader_module: str, trader_parameters: Dict):
         print("[TraderHandler] Adding trader '{}' from {}".format(trader_name, trader_module))
 
         trader_def = self._get_trader_def(trader_module)
@@ -43,12 +53,12 @@ class TraderHandler:
         depedency_indicators = []
         for dependency_name, dependency in trader_def.dependencies.items():
             # TODO: try catch in case dependency is missing required fields
-            dependency_indicator = self.indicator_handler.add_indicator(dependency_name, dependency['indicator'], dependency['parameters'], init_frame_idx)
+            dependency_indicator = self.indicator_handler.add_indicator(dependency_name, dependency['indicator'], dependency['parameters'], self.data_idx)
             depedency_indicators.append( dependency_indicator )
 
         trader = trader_def.trader_class(trader_name, trader_parameters)
         trader.set_depending_indicators(depedency_indicators)
-        trader.init(init_frame_idx)
+        trader.init(self.data_idx)
 
         self.traders[str(uuid4())] = trader
 
@@ -74,8 +84,11 @@ class TraderHandler:
         for trader in self.traders.values():
             trader.update(input_data, self.data_idx)
 
+        # update balance
+        self.account_balance[self.data_idx] = self._get_balance(self.data_idx)
 
-    def get_balance(self, data_idx, trader_name = None):
+
+    def _get_balance(self, data_idx, trader_name = None):
         balance = self.start_balance
         if trader_name is None:
             for trader in self.traders.values():
@@ -85,6 +98,12 @@ class TraderHandler:
                 if trader.name == trader_name:
                     balance += trader.get_profit(data_idx)
         return balance
+    
+    def get_balance(self, data_idx = None):
+        if data_idx is None:
+            return self.account_balance
+        else:
+            return self.account_balance[0:data_idx+1]
 
     def _get_trader_def(self, trader_module_name: str):
         trader_module = import_module(trader_module_name)

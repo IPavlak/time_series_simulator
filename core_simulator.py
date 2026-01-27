@@ -46,12 +46,10 @@ class Simulator:
         elif self.running:
             print('[Simulator] Simulator cannot start, already running')
         else:
-            # self.vis.start()
             self.control_event.set()
 
     def stop(self):
         self.control_event.clear()
-        # self.vis.stop()
         self.reset()
 
     def pause(self):
@@ -116,9 +114,10 @@ class Simulator:
 
                 self.is_input_valid = True
 
-                self.vis.set_init_frame(self.frame_data)
-                if self.vis.is_running():   # maybe unnecessary
-                    self._draw_init_frame()
+                self.indicator_handler.set_init_frame(self.frame_data.core_data_idx)
+                self.trader_handler.set_init_frame(self.frame_data.core_data_idx)
+                self.comm.init_frame_signal.emit(deepcopy(self.frame_data))
+                self._draw_init_frame()
                     
 
     def _set_interval(self, interval):
@@ -140,13 +139,12 @@ class Simulator:
 
 
     def add_indicator(self, indicator_name: str, indicator: str, indicator_parameters={}):
-        ind = self.indicator_handler.add_indicator(indicator_name, indicator, indicator_parameters, \
-                                                   init_frame_idx=self.frame_data.core_data_idx)
+        ind = self.indicator_handler.add_indicator(indicator_name, indicator, indicator_parameters)
         self.vis.add_plot(ind, ind.parameters.visualization)
+        # self.comm.add_plot_signal.emit(ind, ind.parameters.visualization)
     
     def add_trader(self, trader_name: str, trader: str, trader_parameters={}):
-        trader = self.trader_handler.add_trader(trader_name, trader, trader_parameters, \
-                                                init_frame_idx=self.frame_data.core_data_idx)
+        trader = self.trader_handler.add_trader(trader_name, trader, trader_parameters)
         self.vis.add_plot(trader.buy_orders_data_source, trader.get_buy_vis_params())
         self.vis.add_plot(trader.sell_orders_data_source, trader.get_sell_vis_params())
         self.vis.add_plot(trader.buy_pend_orders_data_source, trader.get_buy_vis_params())
