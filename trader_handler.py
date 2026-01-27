@@ -33,7 +33,7 @@ class TraderHandler:
         self.account_balance = np.zeros((self.data.shape[0], 1))
         self.account_balance[:] = np.nan
         self.data_idx = data_idx
-        self.account_balance[0:self.data_idx] = self.start_balance
+        self.account_balance[0:self.data_idx+1] = self.start_balance
 
     # TODO: check for circular dependencies
     def add_trader(self, trader_name: str, trader_module: str, trader_parameters: Dict):

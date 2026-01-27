@@ -24,7 +24,6 @@ class BalanceWidget(QtWidgets.QWidget):
 
     def update_data(self, frame_data):
         self.data_idx = frame_data.core_data_idx
-        # Retrieving the full history might be optimized later, currently gets full array
         self.balance = self.trader_handler.get_balance(self.data_idx).flatten()
         self.update()
 
@@ -66,8 +65,8 @@ class BalanceWidget(QtWidgets.QWidget):
         plot_range = plot_max - plot_min
 
         # Dimensions
-        margin_left = 60 
-        margin_right = 10
+        margin_left = 20
+        margin_right = 60
         margin_top = 10
         margin_bottom = 40
         
@@ -77,7 +76,7 @@ class BalanceWidget(QtWidgets.QWidget):
         view_len = max(50, actual_len)
         if view_len == 0: view_len = 1
         
-        scale_x = plot_rect.width() / view_len
+        scale_x = (plot_rect.width() - 10) / view_len
         scale_y = plot_rect.height() / plot_range
         
         # Draw grid
@@ -85,17 +84,31 @@ class BalanceWidget(QtWidgets.QWidget):
         
         # Horizontal grid lines (price levels)
         num_h_lines = 5
+        font = painter.font()
+        font.setPointSize(8)
+        painter.setFont(font)
+
         for i in range(num_h_lines + 1):
             y_val = plot_min + (plot_range * i / num_h_lines)
             y = plot_rect.bottom() - (y_val - plot_min) * scale_y
+            
+            # Line
+            painter.setPen(QtGui.QPen(QtGui.QColor(220, 220, 220), 1, Qt.DotLine))
             painter.drawLine(QtCore.QPointF(plot_rect.left(), y), QtCore.QPointF(plot_rect.right(), y))
+            
+            # Label
+            painter.setPen(Qt.black)
+            painter.drawText(int(plot_rect.right() + 5), int(y + 5), f"{y_val:.2f}")
         
         # Vertical grid lines (time)
         num_v_lines = 5
         for i in range(num_v_lines + 1):
             x_idx = int(self.start_idx + (view_len * i / num_v_lines))
             x = plot_rect.left() + ((x_idx - self.start_idx) * scale_x)
-            painter.drawLine(QtCore.QPointF(x, plot_rect.top()), QtCore.QPointF(x, plot_rect.bottom()))
+            
+            if x <= plot_rect.right():
+                painter.setPen(QtGui.QPen(QtGui.QColor(220, 220, 220), 1, Qt.DotLine))
+                painter.drawLine(QtCore.QPointF(x, plot_rect.top()), QtCore.QPointF(x, plot_rect.bottom()))
         
         # Build plot points
         points = []
@@ -123,10 +136,6 @@ class BalanceWidget(QtWidgets.QWidget):
         painter.setPen(Qt.black)
         painter.drawRect(plot_rect)
         
-        # Y Axis Labels
-        painter.drawText(5, int(plot_rect.top() + 10), f"{plot_max:.2f}")
-        painter.drawText(5, int(plot_rect.bottom()), f"{plot_min:.2f}")
-        
         # X Axis Time Labels
         if len(self.data) > 0:
             painter.setPen(Qt.black)
@@ -136,8 +145,12 @@ class BalanceWidget(QtWidgets.QWidget):
             
             for i in range(num_v_lines + 1):
                 x_idx = int(self.start_idx + (view_len * i / num_v_lines))
+                # Skip if outside right
+                x = plot_rect.left() + ((x_idx - self.start_idx) * scale_x)
+                if x > plot_rect.right(): 
+                    continue
+
                 if x_idx < len(self.data):
-                    x = plot_rect.left() + ((x_idx - self.start_idx) * scale_x)
                     date_val = self.data.Date[x_idx]
                     if isinstance(date_val, pd.Timestamp):
                         time_str = date_val.strftime('%H:%M\n%d-%m')
@@ -165,4 +178,15 @@ class BalanceWidget(QtWidgets.QWidget):
             font.setPointSize(10)
             font.setBold(True)
             painter.setFont(font)
-            painter.drawText(int(plot_rect.left() + 10), int(plot_rect.top() + 20), f"Current: {current_val:.2f}")
+            
+            # Determine position
+            x_pos = int(plot_rect.left() + 10)
+            y_pos = int(plot_rect.top() + 20)
+            
+            # If current balance is less than start balance, show at bottom
+            if len(self.balance) > self.start_idx:
+                start_val = self.balance[self.start_idx]
+                if not np.isnan(start_val) and current_val < start_val:
+                    y_pos = int(plot_rect.bottom() - 10)
+            
+            painter.drawText(x_pos, y_pos, f"Current: {current_val:.2f}")
