@@ -51,8 +51,8 @@ def testRun(start_vis, stop_vis):
 # go very very wrong..
 class Communicate(QtCore.QObject):
     update_vis_signal = QtCore.pyqtSignal(threading.Event, FrameData)
-    init_frame_vis_signal = QtCore.pyqtSignal(FrameData)
-    add_plot_vis_signal = QtCore.pyqtSignal()
+    init_frame_signal = QtCore.pyqtSignal(FrameData)
+    # add_plot_signal = QtCore.pyqtSignal(object, object)  # data_source, vis_params
 
 ''' End Class '''
 
@@ -75,19 +75,22 @@ if __name__ == '__main__':
     # print(self.frameSize())
 
 
-    ### Visualization
-    # self.canvas = MplCanvas() -> maybe this is better, and I should send only Canvas to Visualization object ?
+    ### Main Visualization - candles, indicators, traders within central screen
     vis = Visualization()
 
     ### Communication  (Slots and signals - Qt framework)
     comm = Communicate()
     comm.update_vis_signal.connect(vis.update_frame)
+    comm.init_frame_signal.connect(vis.set_init_frame)
+    # comm.add_plot_signal.connect(vis.add_plot)
 
     ### Simulator
     sim = Simulator(comm, vis, 1.2)
 
     ### User Interface
     ui = UI(sim, vis)
+    comm.update_vis_signal.connect(ui.update_balance_vis)
+    comm.init_frame_signal.connect(ui.balance_widget.set_init_frame)
 
     runSim()
 

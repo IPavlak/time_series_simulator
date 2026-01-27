@@ -23,8 +23,12 @@ class IndicatorHandler:
         self.data_idx = 0
         self.indicators = OrderedDict()
 
+    # must be called before add_indicator to set init data_idx
+    def set_init_frame(self, data_idx):
+        self.data_idx = data_idx
+
     # TODO: check for circular dependencies
-    def add_indicator(self, indicator_name: str, indicator_module: str, indicator_parameters: Dict, init_frame_idx):
+    def add_indicator(self, indicator_name: str, indicator_module: str, indicator_parameters: Dict):
         print("[IndicatorHandler] Adding indicator '{}' from {}".format(indicator_name, indicator_module))
 
         indicator_def = self._get_indicator_def(indicator_module)
@@ -41,12 +45,12 @@ class IndicatorHandler:
         depedency_indicators = []
         for dependency_name, dependency in indicator_def.dependencies.items():
             # TODO: try catch in case dependency is missing required fields
-            dependency_indicator = self.add_indicator(dependency_name, dependency['indicator'], dependency['parameters'], init_frame_idx)
+            dependency_indicator = self.add_indicator(dependency_name, dependency['indicator'], dependency['parameters'], self.data_idx)
             depedency_indicators.append( dependency_indicator )
 
         indicator = indicator_def.indicator_class(indicator_name, indicator_parameters)
         indicator.set_depending_indicators(depedency_indicators)
-        indicator.init(init_frame_idx)
+        indicator.init(self.data_idx)
 
         self.indicators[str(uuid4())] = indicator
 

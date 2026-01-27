@@ -156,5 +156,5 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.settingTabs.setTabText(self.settingTabs.indexOf(self.tab), _translate("MainWindow", "Tab 1"))
+        self.settingTabs.setTabText(self.settingTabs.indexOf(self.tab), _translate("MainWindow", "Account"))
         self.settingTabs.setTabText(self.settingTabs.indexOf(self.tab_2), _translate("MainWindow", "Tab 2"))
