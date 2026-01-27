@@ -23,7 +23,7 @@ data_to_append = pd.DataFrame({'Date': pd.Timestamp('2022-02-26 00:00'), 'Open':
 print('Data size: %d | Appending data size: %d' % (base_data.shape[0], data_to_append.shape[0]))
 
 start = time()
-appended_data = base_data.append(data_to_append, ignore_index=True)
+appended_data = base_data._append(data_to_append, ignore_index=True)
 t = time() - start
 # print(appended_data)
 print("Appending: %f" % t)
@@ -46,7 +46,7 @@ data_to_append = data.iloc[200000:210000]
 print('Data size: %d | Appending data size: %d' % (base_data.shape[0], data_to_append.shape[0]))
 
 start = time()
-appended_data = base_data.append(data_to_append, ignore_index=True)
+appended_data = base_data._append(data_to_append, ignore_index=True)
 t = time() - start
 # print(appended_data)
 print("Appending: %f" % t)
@@ -69,7 +69,7 @@ data_to_append = data.iloc[200000:210000]
 print('Data size: %d | Appending data size: %d' % (base_data.shape[0], data_to_append.shape[0]))
 
 start = time()
-appended_data = base_data.append(data_to_append, ignore_index=True)
+appended_data = base_data._append(data_to_append, ignore_index=True)
 t = time() - start
 # print(appended_data)
 print("Appending: %f" % t)
