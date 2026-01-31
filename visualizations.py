@@ -190,6 +190,92 @@ class AxisOverlay(QtWidgets.QWidget):
             
             painter.drawText(int(x_pos), int(screen_y) + 5, f"{price:.5f}")
 
+        # --- Crosshair ---
+        if getattr(view, 'crosshair_enabled', False):
+            pos = view.crosshair_pos # View widget coordinates
+            
+            # Map to viewport reference for clamping and scene mapping
+            # Note: pos is relative to visualization widget. Viewport is a child.
+            # But geometry of viewport (vp) is relative to visualization widget.
+            
+            # Clamp position to viewport
+            cx = max(vp.left(), min(pos.x(), vp.right()))
+            cy = max(vp.top(), min(pos.y(), vp.bottom()))
+            
+            # Draw lines
+            pen = QPen(Qt.black)
+            pen.setStyle(Qt.DashLine)
+            painter.setPen(pen)
+            
+            # Vertical
+            painter.drawLine(cx, vp.top(), cx, vp.bottom())
+            # Horizontal
+            painter.drawLine(vp.left(), cy, vp.right(), cy)
+            
+            # --- Draw Labels ---
+            # We need scene coordinates for values
+            # Convert widget pos to viewport point
+            vp_pt = QPointF(cx - vp.left(), cy - vp.top())
+            scene_pt = view.mapToScene(vp_pt.toPoint())
+            
+            # X Label (Date)
+            date_idx = int(round(scene_pt.x()))
+            label_text = f"IDX: {date_idx}"
+            
+            if view.data is not None and 0 <= date_idx < len(view.data):
+                try:
+                    date_val = view.data.Date[date_idx]
+                    if isinstance(date_val, pd.Timestamp):
+                        label_text = date_val.strftime('%d-%m-%Y %H:%M')
+                    else:
+                        label_text = str(date_val)
+                except:
+                    pass
+            
+            # Prepare Label Drawing
+            bg_brush = QBrush(QColor(0, 0, 0, 200)) # Semi-transparent black
+            text_pen = QPen(Qt.white)
+            font_metrics = painter.fontMetrics()
+            
+            # Draw X Label Box
+            text_rect = font_metrics.boundingRect(label_text)
+            pad = 6
+            w = text_rect.width() + pad * 2
+            h = text_rect.height() + pad
+            
+            # Position at bottom axis, centered on crosshair X
+            lbl_x = cx - w / 2
+            lbl_y = vp.bottom() + 2
+            
+            # Clamp X to window
+            lbl_x = max(0, min(lbl_x, self.width() - w))
+            
+            rect = QRectF(lbl_x, lbl_y, w, h)
+            painter.setBrush(bg_brush)
+            painter.setPen(Qt.NoPen)
+            painter.drawRect(rect)
+            painter.setPen(text_pen)
+            painter.drawText(rect, Qt.AlignCenter, label_text)
+            
+            # Y Label (Price)
+            price_val = scene_pt.y()
+            label_text = f"{price_val:.5f}"
+            
+            text_rect = font_metrics.boundingRect(label_text)
+            w = text_rect.width() + pad * 2
+            h = text_rect.height() + pad
+            
+            # Position at right axis, centered on crosshair Y
+            lbl_x = vp.right() + 2
+            lbl_y = cy - h / 2
+            
+            rect = QRectF(lbl_x, lbl_y, w, h)
+            painter.setBrush(bg_brush)
+            painter.setPen(Qt.NoPen)
+            painter.drawRect(rect)
+            painter.setPen(text_pen)
+            painter.drawText(rect, Qt.AlignCenter, label_text)
+
 class Visualization(QGraphicsView):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -253,6 +339,25 @@ class Visualization(QGraphicsView):
         # Grid and Axis
         self.grid_items = []
         self.axis_labels = []
+        
+        # Crosshair
+        self.crosshair_enabled = False
+        self.crosshair_pos = QtCore.QPoint(0, 0)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MiddleButton:
+            self.crosshair_enabled = not self.crosshair_enabled
+            self.setMouseTracking(self.crosshair_enabled)
+            if self.crosshair_enabled:
+                self.crosshair_pos = event.pos()
+            self.axis_overlay.update()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.crosshair_enabled:
+            self.crosshair_pos = event.pos()
+            self.axis_overlay.update()
+        super().mouseMoveEvent(event)
 
     def calculate_grid_lines(self):
         vp_width = self.viewport().width()
