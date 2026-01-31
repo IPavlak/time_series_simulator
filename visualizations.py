@@ -337,7 +337,7 @@ class Visualization(QGraphicsView):
         # 3. Auto-scroll / Fit View
         self.axis_overlay.update()
         # For now, always keep the latest candle in view
-        self._ensure_visible(self.frame_idx)
+        self._update_view(self.frame_idx)
 
         # Signal done
         if done_event:
@@ -349,7 +349,7 @@ class Visualization(QGraphicsView):
     def _update_current_candle(self, candle, idx):
         pass # Deprecated
 
-    def _ensure_visible(self, idx=None, anchor_right_x=None):
+    def _update_view(self, idx=None, anchor_right_x=None):
         if self._updating_view:
             return
 
@@ -386,7 +386,6 @@ class Visualization(QGraphicsView):
                 # Clamp to latest candle + margin
                 max_right = self.frame_idx + self.width_oc / 2 + margin_scene
                 current_right_x = min(current_right_x, max_right)
-
                 target_center_x = current_right_x - (view_width_scene / 2)
             
             min_x = target_center_x - (view_width_scene / 2)
@@ -524,14 +523,14 @@ class Visualization(QGraphicsView):
 
     def _on_scroll(self):
         self.axis_overlay.update()
-        self._ensure_visible(None)
+        self._update_view(None)
 
     def resizeEvent(self, event):
         self.axis_overlay.resize(self.size())
         super().resizeEvent(event)
         # Re-calculate visibility and scaling when view size changes
         # Use the captured anchor to keep the rightmost candle visible
-        self._ensure_visible(idx=None, anchor_right_x=self.last_right_scene_x)
+        self._update_view(idx=None, anchor_right_x=self.last_right_scene_x)
 
     def add_plot(self, data_source, vis_params, **kwargs):
         params = self._vis_params_to_plot_params(vis_params)
@@ -570,7 +569,7 @@ class Visualization(QGraphicsView):
             # Clamp
             self.bars_per_inch = max(1.0, min(self.bars_per_inch, 100.0))
             
-            self._ensure_visible(None)
+            self._update_view(None)
             
         elif event.modifiers() & Qt.ShiftModifier:
              # Zoom Y
@@ -582,6 +581,5 @@ class Visualization(QGraphicsView):
             hbar.setValue(hbar.value() - delta)
 
     def set_init_frame(self, data_frame):
-        # Called by simulator to set initial state
-        self.frame_idx = data_frame.core_data_idx
-        # self.update_frame(None, data_frame) # Don't draw yet?
+        self.update_frame(None, data_frame) # Update intial frame
+
