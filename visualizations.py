@@ -142,89 +142,53 @@ class AxisOverlay(QtWidgets.QWidget):
         painter = QPainter(self)
         view = self.parent()
         
-        # Grid settings
-        grid_pen = QPen(QColor(220, 220, 220))
-        grid_pen.setStyle(Qt.DotLine)
+        # Grid settings - only need text pen now, grid is in view background
         text_pen = QPen(Qt.black)
+        painter.setPen(text_pen)
         
         # Viewport geometry relative to the widget
         vp = view.viewport().geometry()
         
-        # Visible scene rect
-        visible_scene_rect = view.mapToScene(view.viewport().rect()).boundingRect()
-        
-        # --- Draw X Axis ---
-        start_x = visible_scene_rect.left()
-        end_x = visible_scene_rect.right()
-        
-        if end_x > start_x:
-            visible_range = end_x - start_x
-            # Dynamic tick step
-            max_labels = max(3, int(vp.width() / 100))
-            tick_step = max(1, int(visible_range / max_labels))
+        # Get grid lines from view (scene coords)
+        # Use getattr to be safe during init or if method missing
+        if not hasattr(view, 'calculate_grid_lines'):
+            return
             
-            start_idx = int(math.ceil(start_x))
-            end_idx = int(math.floor(end_x))
-            
-            # Align
-            aligned_start = start_idx - (start_idx % tick_step)
-            if aligned_start < start_idx: aligned_start += tick_step
-            
-            y_pos = vp.bottom() + 5 # Start drawing below viewport
-            
-            # Ensure data is available
-            if view.data is not None and len(view.data) > 0:
-                for i in range(aligned_start, end_idx + 1, tick_step):
-                    if 0 <= i < len(view.data):
-                        # Map X to viewport X
-                        view_pt = view.mapFromScene(QPointF(i, 0))
-                        # Convert to widget coords
-                        screen_x = vp.left() + view_pt.x()
-                        
-                        # Draw Grid Line
-                        painter.setPen(grid_pen)
-                        painter.drawLine(int(screen_x), vp.top(), int(screen_x), vp.bottom())
-                        
-                        # Draw Text
-                        painter.setPen(text_pen)
-                        try:
-                            date_val = view.data.Date[i]
-                            if isinstance(date_val, pd.Timestamp):
-                                date_str = date_val.strftime('%H:%M\n%d-%m')
-                            else:
-                                date_str = str(date_val)
-                            
-                            lines = date_str.split('\n')
-                            for j, line in enumerate(lines):
-                                painter.drawText(int(screen_x) - 20, int(y_pos) + j*15 + 10, line)
-                        except:
-                            pass
+        x_lines, y_lines = view.calculate_grid_lines()
 
-        # --- Draw Y Axis ---
-        min_y = visible_scene_rect.top()
-        max_y = visible_scene_rect.bottom()
-        start_y = min(min_y, max_y)
-        end_y = max(min_y, max_y)
-        
-        price_range = end_y - start_y
-        if price_range > 0:
-            n_ticks = 10
-            price_step = price_range / n_ticks
-            
-            x_pos = vp.right() + 5 # Start drawing to right of viewport
-            
-            for i in range(n_ticks + 1):
-                price = start_y + i * price_step
-                view_pt = view.mapFromScene(QPointF(0, price))
-                screen_y = vp.top() + view_pt.y()
-                
-                # Draw Grid Line
-                painter.setPen(grid_pen)
-                painter.drawLine(vp.left(), int(screen_y), vp.right(), int(screen_y))
+        y_pos = vp.bottom() + 5 
 
-                # Draw Label
-                painter.setPen(text_pen)
-                painter.drawText(int(x_pos), int(screen_y) + 5, f"{price:.5f}")
+        # --- Draw X Labels ---
+        # Ensure data is available
+        if view.data is not None and len(view.data) > 0:
+            for i in x_lines:
+                if 0 <= i < len(view.data):
+                    # Map X (scene) to viewport X
+                    view_pt = view.mapFromScene(QPointF(i, 0))
+                    # Convert to widget coords (viewport is offset in widget)
+                    screen_x = vp.left() + view_pt.x()
+                    
+                    try:
+                        date_val = view.data.Date[i]
+                        if isinstance(date_val, pd.Timestamp):
+                            date_str = date_val.strftime('%H:%M\n%d-%m')
+                        else:
+                            date_str = str(date_val)
+                        
+                        lines = date_str.split('\n')
+                        for j, line in enumerate(lines):
+                            painter.drawText(int(screen_x) - 20, int(y_pos) + j*15 + 10, line)
+                    except:
+                        pass
+
+        # --- Draw Y Labels ---
+        x_pos = vp.right() + 5 
+        
+        for price in y_lines:
+            view_pt = view.mapFromScene(QPointF(0, price))
+            screen_y = vp.top() + view_pt.y()
+            
+            painter.drawText(int(x_pos), int(screen_y) + 5, f"{price:.5f}")
 
 class Visualization(QGraphicsView):
     def __init__(self, parent=None):
@@ -289,6 +253,74 @@ class Visualization(QGraphicsView):
         # Grid and Axis
         self.grid_items = []
         self.axis_labels = []
+
+    def calculate_grid_lines(self):
+        vp_width = self.viewport().width()
+        visible_scene_rect = self.mapToScene(self.viewport().rect()).boundingRect()
+        
+        # X Axis
+        start_x = visible_scene_rect.left()
+        end_x = visible_scene_rect.right()
+        visible_range = end_x - start_x
+        
+        x_lines = []
+        if visible_range > 0:
+            max_labels = max(3, int(vp_width / 100))
+            tick_step = max(1, int(visible_range / max_labels))
+            
+            start_idx = int(math.ceil(start_x))
+            end_idx = int(math.floor(end_x))
+            
+            aligned_start = start_idx - (start_idx % tick_step)
+            if aligned_start < start_idx: aligned_start += tick_step
+            
+            x_lines = list(range(aligned_start, end_idx + 1, tick_step))
+            
+        # Y Axis
+        min_y = visible_scene_rect.top()
+        max_y = visible_scene_rect.bottom()
+        
+        start_y = min(min_y, max_y)
+        end_y = max(min_y, max_y)
+        price_range = end_y - start_y
+        
+        y_lines = []
+        if price_range > 0:
+            n_ticks = 10
+            price_step = price_range / n_ticks
+            for i in range(n_ticks + 1):
+                y_lines.append(start_y + i * price_step)
+                
+        return x_lines, y_lines
+
+    def drawBackground(self, painter, rect):
+        super().drawBackground(painter, rect)
+        
+        x_lines, y_lines = self.calculate_grid_lines()
+        
+        # Grid settings
+        grid_pen = QPen(QColor(220, 220, 220))
+        grid_pen.setStyle(Qt.DotLine)
+        grid_pen.setCosmetic(True) # Ensure consistent 1px width
+        grid_pen.setWidth(1)
+        painter.setPen(grid_pen)
+        
+        # Bounds for lines
+        visible_scene_rect = self.mapToScene(self.viewport().rect()).boundingRect()
+        
+        # X lines are vertical, span Y range
+        top = visible_scene_rect.top()
+        bottom = visible_scene_rect.bottom()
+        
+        for x in x_lines:
+            painter.drawLine(QPointF(x, top), QPointF(x, bottom))
+            
+        # Y lines are horizontal, span X range
+        left = visible_scene_rect.left()
+        right = visible_scene_rect.right()
+        
+        for y in y_lines:
+            painter.drawLine(QPointF(left, y), QPointF(right, y))
 
     def start(self):
         self._running = True
