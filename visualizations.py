@@ -447,11 +447,7 @@ class Visualization(QGraphicsView):
 
         self.frame_idx = frame_data.core_data_idx
         
-        # Update Data Frame (needed for plotters)
-        start_idx = max(0, self.frame_idx - self.frame_size + 1)
-        self.data_frame = self.data[start_idx : self.frame_idx + 1]
-        
-        # 1. Draw/Update Candles
+        # Draw/Update Candles
         
         # If reset, clear scene
         if frame_data.reset:
@@ -467,11 +463,7 @@ class Visualization(QGraphicsView):
         else:
             self.current_candle_cache = None
 
-        # 2. Update Plots
-        for plotter in self.plotters:
-            plotter.update_plots(self.data_frame.index, self.data.Date[self.frame_idx], len(self.data_frame))
-
-        # 3. Auto-scroll / Fit View
+        # Auto-scroll / Fit View
         self.axis_overlay.update()
         # For now, always keep the latest candle in view
         self._update_view(self.frame_idx)
@@ -539,8 +531,10 @@ class Visualization(QGraphicsView):
             
             # 4. Update the candles in the pool
             self._update_visible_candles(start_i, end_i)
+            # 5. Update plots
+            self._update_visible_plots(start_i, end_i)
             
-            # 5. Calculate Y range for these candles
+            # 6. Calculate Y range for these candles
             # We can use the data directly for speed
             start_data = max(0, start_i)
             end_data = min(len(self.data) - 1, end_i)
@@ -600,12 +594,12 @@ class Visualization(QGraphicsView):
                 scene_width = max(scene_end_x, max_x) 
                 self.setSceneRect(0, min_y, scene_width, max_y - min_y)
 
-                # 4. Apply Transform
+                # Apply Transform
                 new_transform = QTransform()
                 new_transform.scale(sx, -abs(target_sy))
                 self.setTransform(new_transform)
                 
-                # 5. Restore Center
+                # Restore Center
                 target_center_y = (min_y + max_y) / 2
                 self.centerOn(target_center_x, target_center_y)
                 
@@ -657,6 +651,16 @@ class Visualization(QGraphicsView):
         
         # Update frame_size for next time
         self.frame_size = num_visible
+
+    def _update_visible_plots(self, start_i, end_i):
+        n = end_i - start_i + 1
+        time_val = self.data.Date[end_i]
+        
+        # x_values as numpy array of indices
+        x_vals = np.arange(start_i, end_i + 1)
+        
+        for plotter in self.plotters:
+            plotter.update_plots(x_vals, time_val, n)
 
     def _on_scroll(self):
         self.axis_overlay.update()
