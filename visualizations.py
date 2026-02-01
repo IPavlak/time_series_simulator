@@ -440,10 +440,6 @@ class Visualization(QGraphicsView):
 
     def update_frame(self, done_event, frame_data):
         start_t = time()
-        
-        # Ensure we have the latest data reference
-        if self.data is not dm.data:
-            self.data = dm.data
 
         self.frame_idx = frame_data.core_data_idx
         
@@ -465,148 +461,115 @@ class Visualization(QGraphicsView):
 
         # Auto-scroll / Fit View
         self.axis_overlay.update()
-        # For now, always keep the latest candle in view
-        self._update_view(self.frame_idx)
+        
+        self._update_view()
 
         # Signal done
         if done_event:
             done_event.set()
 
-    def _draw_candles(self, df):
-        pass # Deprecated
 
-    def _update_current_candle(self, candle, idx):
-        pass # Deprecated
-
-    def _update_view(self, idx=None, anchor_right_x=None):
+    def _update_view(self, scroll = False, resize = False):
         if self._updating_view:
             return
-
         self._updating_view = True
-        try:
-            # 1. Calculate X-scale (sx) from bars_per_inch
-            dpi = self.logicalDpiX()
-            if dpi == 0: dpi = 96
-            
-            sx = dpi / self.bars_per_inch
-            
-            # Calculate margin in scene units
-            margin_scene = self.x_margin / sx
-            
-            # 2. Determine visible X range in Scene Coordinates
-            viewport_rect = self.viewport().rect()
-            view_width_scene = viewport_rect.width() / sx
-            
-            if idx is not None:
-                # Force view to end (latest candles)
-                # Position: Candle Right Edge + Margin = Viewport Right Edge
-                target_right_x = idx + self.width_oc / 2 + margin_scene
-                target_center_x = target_right_x - (view_width_scene / 2)
-            elif anchor_right_x is not None:
-                # Anchor to specific scene X (used during resize to preserve position)
-                current_right_x = anchor_right_x
-                # Clamp to latest candle + margin
-                max_right = self.frame_idx + self.width_oc / 2 + margin_scene
-                current_right_x = min(current_right_x, max_right)
-                target_center_x = current_right_x - (view_width_scene / 2)
-            else:
-                # Preserve current right edge (last candle) - used while scrolling
-                current_right_x = self.mapToScene(viewport_rect.width(), 0).x()
-                # Clamp to latest candle + margin
-                max_right = self.frame_idx + self.width_oc / 2 + margin_scene
-                current_right_x = min(current_right_x, max_right)
-                target_center_x = current_right_x - (view_width_scene / 2)
-            
-            min_x = target_center_x - (view_width_scene / 2)
-            max_x = target_center_x + (view_width_scene / 2)
-            
-            # 3. Identify indices to draw
-            half_width = self.width_oc / 2
-            start_i = int(math.ceil(min_x - half_width))
-            end_i = int(math.floor(max_x + half_width))
-            
-            # Clamp indices
-            start_i = max(0, start_i)
-            end_i = min(len(self.data) - 1, end_i)
-            
-            # 4. Update the candles in the pool
-            self._update_visible_candles(start_i, end_i)
-            # 5. Update plots
-            self._update_visible_plots(start_i, end_i)
-            
-            # 6. Calculate Y range for these candles
-            # We can use the data directly for speed
-            start_data = max(0, start_i)
-            end_data = min(len(self.data) - 1, end_i)
-            
-            min_y = float('inf')
-            max_y = float('-inf')
-            found = False
-            
-            if start_data <= end_data:
-                # Extract sub-arrays
-                sub_lows = self.data.Low.values[start_data : end_data + 1]
-                sub_highs = self.data.High.values[start_data : end_data + 1]
-                
-                if len(sub_lows) > 0:
-                    min_y = np.min(sub_lows)
-                    max_y = np.max(sub_highs)
-                    found = True
-                
-                # Check current candle if in range
-                if self.frame_idx >= start_data and self.frame_idx <= end_data and self.current_candle_cache:
-                     c = self.current_candle_cache
-                     min_y = min(min_y, c.Low)
-                     max_y = max(max_y, c.High)
-            
-            # Always include the target candle if specified
-            if idx is not None:
-                 # If idx is outside the geometric range (shouldn't happen if we centered on it),
-                 # we might miss it in the array check.
-                 if idx == self.frame_idx and self.current_candle_cache:
-                     c = self.current_candle_cache
-                     min_y = min(min_y, c.Low)
-                     max_y = max(max_y, c.High)
-                     found = True
-                 elif 0 <= idx < len(self.data):
-                     min_y = min(min_y, self.data.Low.values[idx])
-                     max_y = max(max_y, self.data.High.values[idx])
-                     found = True
-                 
-            if found:
-                diff = max_y - min_y
-                if diff == 0: diff = 0.0001
-                
-                # Calculate scaling to fit data within viewport with pixel margins
-                viewport_h = self.viewport().height()
-                if viewport_h < 20: return
-                
-                # Reserve pixels for margin (top and bottom)
-                available_h = viewport_h - 2 * self.y_margin
-                if available_h <= 0: available_h = viewport_h
-                
-                target_sy = available_h / diff
-                
-                # Update Scene Rect to match the area we want to show.
-                # X: Full data range (0 to last candle + margin) to allow scrolling
-                # Y: Visible range (min_y to max_y) for correct vertical centering
-                scene_end_x = self.frame_idx + self.width_oc / 2 + margin_scene
-                scene_width = max(scene_end_x, max_x) 
-                self.setSceneRect(0, min_y, scene_width, max_y - min_y)
 
-                # Apply Transform
-                new_transform = QTransform()
-                new_transform.scale(sx, -abs(target_sy))
-                self.setTransform(new_transform)
-                
-                # Restore Center
-                target_center_y = (min_y + max_y) / 2
-                self.centerOn(target_center_x, target_center_y)
-                
-                # Save state for resize anchoring
-                self.last_right_scene_x = target_center_x + (view_width_scene / 2)
-        finally:
+        # 1. Calculate X-scale (sx) from bars_per_inch
+        dpi = self.logicalDpiX()
+        if dpi == 0: dpi = 96
+        
+        # scene units per pixel
+        sx = dpi / self.bars_per_inch
+        
+        # Calculate margin in scene units
+        margin_scene = self.x_margin / sx
+        
+        # 2. Determine visible X range in Scene Coordinates
+        viewport_rect = self.viewport().rect()
+        view_width_scene = viewport_rect.width() / sx
+        
+
+        max_x = self.frame_idx + self.width_oc / 2 + margin_scene   # Right edge of last candle + margin
+        if resize:
+            # Anchor to last max_x while resizing - preserve right edge
+            max_x = min(max_x, self.last_right_scene_x)
+        elif scroll:
+            # Anchor current right edge (last candle) while scrolling - preserve right edge
+            max_x = min(max_x, self.mapToScene(viewport_rect.width(), 0).x())
+
+        min_x = max_x - view_width_scene
+        target_center_x = (min_x + max_x) / 2
+        
+
+        # 3. Identify indices to draw
+        half_width = self.width_oc / 2
+        start_i = max(0, int(math.ceil( min_x - half_width)))
+        end_i   = min(   int(math.floor(max_x + half_width)), self.frame_idx)
+
+        if start_i > end_i:
+            print("ERROR: No candles to show in view.")
             self._updating_view = False
+            return
+        
+        # 4. Update the candles in the pool
+        self._update_visible_candles(start_i, end_i)
+        # 5. Update plots
+        self._update_visible_plots(start_i, end_i)
+        
+        # 6. Calculate Y range for these candles
+        # We can use the data directly for speed
+        min_y = float('inf')
+        max_y = float('-inf')
+        
+        # Extract sub-arrays
+        sub_lows = self.data.Low.values[start_i : end_i + 1]
+        sub_highs = self.data.High.values[start_i : end_i + 1]
+        
+        if len(sub_lows) > 0:
+            min_y = np.min(sub_lows)
+            max_y = np.max(sub_highs)
+        
+        # Check current candle if in range
+        if self.frame_idx == end_i and self.current_candle_cache:
+            c = self.current_candle_cache
+            min_y = min(min_y, c.Low)
+            max_y = max(max_y, c.High)
+                
+
+        diff = max_y - min_y
+        if diff == 0: diff = 0.0001
+        
+        # Calculate scaling to fit data within viewport with pixel margins
+        viewport_h = self.viewport().height()
+        if viewport_h < 20: return
+        
+        # Reserve pixels for margin (top and bottom)
+        available_h = viewport_h - 2 * self.y_margin
+        if available_h <= 0: available_h = viewport_h
+        
+        target_sy = available_h / diff
+        
+        # Update Scene Rect to match the area we want to show.
+        # X: Full data range (0 to last candle + margin) to allow scrolling
+        # Y: Visible range (min_y to max_y) for correct vertical centering
+        scene_end_x = self.frame_idx + self.width_oc / 2 + margin_scene
+        scene_width = max(scene_end_x, max_x) 
+        self.setSceneRect(0, min_y, scene_width, max_y - min_y)
+
+        # Apply Transform
+        new_transform = QTransform()
+        new_transform.scale(sx, -abs(target_sy))
+        self.setTransform(new_transform)
+        
+        # Restore Center
+        target_center_y = (min_y + max_y) / 2
+        self.centerOn(target_center_x, target_center_y)
+        
+        # Save state for resize anchoring
+        self.last_right_scene_x = max_x
+
+        self._updating_view = False
+        return
 
     def _update_visible_candles(self, start_i, end_i):
         # Map data indices to pool items linearly
@@ -664,14 +627,14 @@ class Visualization(QGraphicsView):
 
     def _on_scroll(self):
         self.axis_overlay.update()
-        self._update_view(None)
+        self._update_view(scroll=True)
 
     def resizeEvent(self, event):
         self.axis_overlay.resize(self.size())
         super().resizeEvent(event)
         # Re-calculate visibility and scaling when view size changes
         # Use the captured anchor to keep the rightmost candle visible
-        self._update_view(idx=None, anchor_right_x=self.last_right_scene_x)
+        self._update_view(resize=True)
 
     def add_plot(self, data_source, vis_params, **kwargs):
         params = self._vis_params_to_plot_params(vis_params)
@@ -710,7 +673,7 @@ class Visualization(QGraphicsView):
             # Clamp
             self.bars_per_inch = max(1.0, min(self.bars_per_inch, 100.0))
             
-            self._update_view(None)
+            self._update_view(scroll=True)
             
         elif event.modifiers() & Qt.ShiftModifier:
              # Zoom Y
