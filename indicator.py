@@ -49,7 +49,7 @@ class SystemIndicator(DataSourceInteraface):
             setattr(self, indicator.name, indicator)
 
 
-    def init(self, init_idx, n=100):
+    def init(self, init_idx, n=1000):
         self.output = np.zeros((self.data.shape[0], 1))
         self.output[:] = np.nan
         

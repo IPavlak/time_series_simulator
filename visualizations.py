@@ -142,89 +142,139 @@ class AxisOverlay(QtWidgets.QWidget):
         painter = QPainter(self)
         view = self.parent()
         
-        # Grid settings
-        grid_pen = QPen(QColor(220, 220, 220))
-        grid_pen.setStyle(Qt.DotLine)
+        # Grid settings - only need text pen now, grid is in view background
         text_pen = QPen(Qt.black)
+        painter.setPen(text_pen)
         
         # Viewport geometry relative to the widget
         vp = view.viewport().geometry()
         
-        # Visible scene rect
-        visible_scene_rect = view.mapToScene(view.viewport().rect()).boundingRect()
-        
-        # --- Draw X Axis ---
-        start_x = visible_scene_rect.left()
-        end_x = visible_scene_rect.right()
-        
-        if end_x > start_x:
-            visible_range = end_x - start_x
-            # Dynamic tick step
-            max_labels = max(3, int(vp.width() / 100))
-            tick_step = max(1, int(visible_range / max_labels))
+        # Get grid lines from view (scene coords)
+        # Use getattr to be safe during init or if method missing
+        if not hasattr(view, 'calculate_grid_lines'):
+            return
             
-            start_idx = int(math.ceil(start_x))
-            end_idx = int(math.floor(end_x))
-            
-            # Align
-            aligned_start = start_idx - (start_idx % tick_step)
-            if aligned_start < start_idx: aligned_start += tick_step
-            
-            y_pos = vp.bottom() + 5 # Start drawing below viewport
-            
-            # Ensure data is available
-            if view.data is not None and len(view.data) > 0:
-                for i in range(aligned_start, end_idx + 1, tick_step):
-                    if 0 <= i < len(view.data):
-                        # Map X to viewport X
-                        view_pt = view.mapFromScene(QPointF(i, 0))
-                        # Convert to widget coords
-                        screen_x = vp.left() + view_pt.x()
-                        
-                        # Draw Grid Line
-                        painter.setPen(grid_pen)
-                        painter.drawLine(int(screen_x), vp.top(), int(screen_x), vp.bottom())
-                        
-                        # Draw Text
-                        painter.setPen(text_pen)
-                        try:
-                            date_val = view.data.Date[i]
-                            if isinstance(date_val, pd.Timestamp):
-                                date_str = date_val.strftime('%H:%M\n%d-%m')
-                            else:
-                                date_str = str(date_val)
-                            
-                            lines = date_str.split('\n')
-                            for j, line in enumerate(lines):
-                                painter.drawText(int(screen_x) - 20, int(y_pos) + j*15 + 10, line)
-                        except:
-                            pass
+        x_lines, y_lines = view.calculate_grid_lines()
 
-        # --- Draw Y Axis ---
-        min_y = visible_scene_rect.top()
-        max_y = visible_scene_rect.bottom()
-        start_y = min(min_y, max_y)
-        end_y = max(min_y, max_y)
-        
-        price_range = end_y - start_y
-        if price_range > 0:
-            n_ticks = 10
-            price_step = price_range / n_ticks
-            
-            x_pos = vp.right() + 5 # Start drawing to right of viewport
-            
-            for i in range(n_ticks + 1):
-                price = start_y + i * price_step
-                view_pt = view.mapFromScene(QPointF(0, price))
-                screen_y = vp.top() + view_pt.y()
-                
-                # Draw Grid Line
-                painter.setPen(grid_pen)
-                painter.drawLine(vp.left(), int(screen_y), vp.right(), int(screen_y))
+        y_pos = vp.bottom() + 5 
 
-                # Draw Label
-                painter.setPen(text_pen)
-                painter.drawText(int(x_pos), int(screen_y) + 5, f"{price:.5f}")
+        # --- Draw X Labels ---
+        # Ensure data is available
+        if view.data is not None and len(view.data) > 0:
+            for i in x_lines:
+                if 0 <= i < len(view.data):
+                    # Map X (scene) to viewport X
+                    view_pt = view.mapFromScene(QPointF(i, 0))
+                    # Convert to widget coords (viewport is offset in widget)
+                    screen_x = vp.left() + view_pt.x()
+                    
+                    try:
+                        date_val = view.data.Date[i]
+                        if isinstance(date_val, pd.Timestamp):
+                            date_str = date_val.strftime('%H:%M\n%d-%m')
+                        else:
+                            date_str = str(date_val)
+                        
+                        lines = date_str.split('\n')
+                        for j, line in enumerate(lines):
+                            painter.drawText(int(screen_x) - 20, int(y_pos) + j*15 + 10, line)
+                    except:
+                        pass
+
+        # --- Draw Y Labels ---
+        x_pos = vp.right() + 5 
+        
+        for price in y_lines:
+            view_pt = view.mapFromScene(QPointF(0, price))
+            screen_y = vp.top() + view_pt.y()
+            
+            painter.drawText(int(x_pos), int(screen_y) + 5, f"{price:.5f}")
+
+        # --- Crosshair ---
+        if getattr(view, 'crosshair_enabled', False):
+            pos = view.crosshair_pos # View widget coordinates
+            
+            # Map to viewport reference for clamping and scene mapping
+            # Note: pos is relative to visualization widget. Viewport is a child.
+            # But geometry of viewport (vp) is relative to visualization widget.
+            
+            # Clamp position to viewport
+            cx = max(vp.left(), min(pos.x(), vp.right()))
+            cy = max(vp.top(), min(pos.y(), vp.bottom()))
+            
+            # Draw lines
+            pen = QPen(Qt.black)
+            pen.setStyle(Qt.DashLine)
+            painter.setPen(pen)
+            
+            # Vertical
+            painter.drawLine(cx, vp.top(), cx, vp.bottom())
+            # Horizontal
+            painter.drawLine(vp.left(), cy, vp.right(), cy)
+            
+            # --- Draw Labels ---
+            # We need scene coordinates for values
+            # Convert widget pos to viewport point
+            vp_pt = QPointF(cx - vp.left(), cy - vp.top())
+            scene_pt = view.mapToScene(vp_pt.toPoint())
+            
+            # X Label (Date)
+            date_idx = int(round(scene_pt.x()))
+            label_text = f"IDX: {date_idx}"
+            
+            if view.data is not None and 0 <= date_idx < len(view.data):
+                try:
+                    date_val = view.data.Date[date_idx]
+                    if isinstance(date_val, pd.Timestamp):
+                        label_text = date_val.strftime('%d-%m-%Y %H:%M')
+                    else:
+                        label_text = str(date_val)
+                except:
+                    pass
+            
+            # Prepare Label Drawing
+            bg_brush = QBrush(QColor(0, 0, 0, 200)) # Semi-transparent black
+            text_pen = QPen(Qt.white)
+            font_metrics = painter.fontMetrics()
+            
+            # Draw X Label Box
+            text_rect = font_metrics.boundingRect(label_text)
+            pad = 6
+            w = text_rect.width() + pad * 2
+            h = text_rect.height() + pad
+            
+            # Position at bottom axis, centered on crosshair X
+            lbl_x = cx - w / 2
+            lbl_y = vp.bottom() + 2
+            
+            # Clamp X to window
+            lbl_x = max(0, min(lbl_x, self.width() - w))
+            
+            rect = QRectF(lbl_x, lbl_y, w, h)
+            painter.setBrush(bg_brush)
+            painter.setPen(Qt.NoPen)
+            painter.drawRect(rect)
+            painter.setPen(text_pen)
+            painter.drawText(rect, Qt.AlignCenter, label_text)
+            
+            # Y Label (Price)
+            price_val = scene_pt.y()
+            label_text = f"{price_val:.5f}"
+            
+            text_rect = font_metrics.boundingRect(label_text)
+            w = text_rect.width() + pad * 2
+            h = text_rect.height() + pad
+            
+            # Position at right axis, centered on crosshair Y
+            lbl_x = vp.right() + 2
+            lbl_y = cy - h / 2
+            
+            rect = QRectF(lbl_x, lbl_y, w, h)
+            painter.setBrush(bg_brush)
+            painter.setPen(Qt.NoPen)
+            painter.drawRect(rect)
+            painter.setPen(text_pen)
+            painter.drawText(rect, Qt.AlignCenter, label_text)
 
 class Visualization(QGraphicsView):
     def __init__(self, parent=None):
@@ -289,6 +339,93 @@ class Visualization(QGraphicsView):
         # Grid and Axis
         self.grid_items = []
         self.axis_labels = []
+        
+        # Crosshair
+        self.crosshair_enabled = False
+        self.crosshair_pos = QtCore.QPoint(0, 0)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MiddleButton:
+            self.crosshair_enabled = not self.crosshair_enabled
+            self.setMouseTracking(self.crosshair_enabled)
+            if self.crosshair_enabled:
+                self.crosshair_pos = event.pos()
+            self.axis_overlay.update()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.crosshair_enabled:
+            self.crosshair_pos = event.pos()
+            self.axis_overlay.update()
+        super().mouseMoveEvent(event)
+
+    def calculate_grid_lines(self):
+        vp_width = self.viewport().width()
+        visible_scene_rect = self.mapToScene(self.viewport().rect()).boundingRect()
+        
+        # X Axis
+        start_x = visible_scene_rect.left()
+        end_x = visible_scene_rect.right()
+        visible_range = end_x - start_x
+        
+        x_lines = []
+        if visible_range > 0:
+            max_labels = max(3, int(vp_width / 100))
+            tick_step = max(1, int(visible_range / max_labels))
+            
+            start_idx = int(math.ceil(start_x))
+            end_idx = int(math.floor(end_x))
+            
+            aligned_start = start_idx - (start_idx % tick_step)
+            if aligned_start < start_idx: aligned_start += tick_step
+            
+            x_lines = list(range(aligned_start, end_idx + 1, tick_step))
+            
+        # Y Axis
+        min_y = visible_scene_rect.top()
+        max_y = visible_scene_rect.bottom()
+        
+        start_y = min(min_y, max_y)
+        end_y = max(min_y, max_y)
+        price_range = end_y - start_y
+        
+        y_lines = []
+        if price_range > 0:
+            n_ticks = 10
+            price_step = price_range / n_ticks
+            for i in range(n_ticks + 1):
+                y_lines.append(start_y + i * price_step)
+                
+        return x_lines, y_lines
+
+    def drawBackground(self, painter, rect):
+        super().drawBackground(painter, rect)
+        
+        x_lines, y_lines = self.calculate_grid_lines()
+        
+        # Grid settings
+        grid_pen = QPen(QColor(220, 220, 220))
+        grid_pen.setStyle(Qt.DotLine)
+        grid_pen.setCosmetic(True) # Ensure consistent 1px width
+        grid_pen.setWidth(1)
+        painter.setPen(grid_pen)
+        
+        # Bounds for lines
+        visible_scene_rect = self.mapToScene(self.viewport().rect()).boundingRect()
+        
+        # X lines are vertical, span Y range
+        top = visible_scene_rect.top()
+        bottom = visible_scene_rect.bottom()
+        
+        for x in x_lines:
+            painter.drawLine(QPointF(x, top), QPointF(x, bottom))
+            
+        # Y lines are horizontal, span X range
+        left = visible_scene_rect.left()
+        right = visible_scene_rect.right()
+        
+        for y in y_lines:
+            painter.drawLine(QPointF(left, y), QPointF(right, y))
 
     def start(self):
         self._running = True
@@ -303,18 +440,10 @@ class Visualization(QGraphicsView):
 
     def update_frame(self, done_event, frame_data):
         start_t = time()
-        
-        # Ensure we have the latest data reference
-        if self.data is not dm.data:
-            self.data = dm.data
 
         self.frame_idx = frame_data.core_data_idx
         
-        # Update Data Frame (needed for plotters)
-        start_idx = max(0, self.frame_idx - self.frame_size + 1)
-        self.data_frame = self.data[start_idx : self.frame_idx + 1]
-        
-        # 1. Draw/Update Candles
+        # Draw/Update Candles
         
         # If reset, clear scene
         if frame_data.reset:
@@ -330,153 +459,117 @@ class Visualization(QGraphicsView):
         else:
             self.current_candle_cache = None
 
-        # 2. Update Plots
-        for plotter in self.plotters:
-            plotter.update_plots(self.data_frame.index, self.data.Date[self.frame_idx], len(self.data_frame))
-
-        # 3. Auto-scroll / Fit View
+        # Auto-scroll / Fit View
         self.axis_overlay.update()
-        # For now, always keep the latest candle in view
-        self._ensure_visible(self.frame_idx)
+        
+        self._update_view()
 
         # Signal done
         if done_event:
             done_event.set()
 
-    def _draw_candles(self, df):
-        pass # Deprecated
 
-    def _update_current_candle(self, candle, idx):
-        pass # Deprecated
-
-    def _ensure_visible(self, idx=None, anchor_right_x=None):
+    def _update_view(self, scroll = False, resize = False):
         if self._updating_view:
             return
-
         self._updating_view = True
-        try:
-            # 1. Calculate X-scale (sx) from bars_per_inch
-            dpi = self.logicalDpiX()
-            if dpi == 0: dpi = 96
-            
-            sx = dpi / self.bars_per_inch
-            
-            # Calculate margin in scene units
-            margin_scene = self.x_margin / sx
-            
-            # 2. Determine visible X range in Scene Coordinates
-            viewport_rect = self.viewport().rect()
-            view_width_scene = viewport_rect.width() / sx
-            
-            if idx is not None:
-                # Force view to end (latest candles)
-                # Position: Candle Right Edge + Margin = Viewport Right Edge
-                target_right_x = idx + self.width_oc / 2 + margin_scene
-                target_center_x = target_right_x - (view_width_scene / 2)
-            elif anchor_right_x is not None:
-                # Anchor to specific scene X (used during resize to preserve position)
-                current_right_x = anchor_right_x
-                # Clamp to latest candle + margin
-                max_right = self.frame_idx + self.width_oc / 2 + margin_scene
-                current_right_x = min(current_right_x, max_right)
-                target_center_x = current_right_x - (view_width_scene / 2)
-            else:
-                # Preserve current right edge (last candle) - used while scrolling
-                current_right_x = self.mapToScene(viewport_rect.width(), 0).x()
-                # Clamp to latest candle + margin
-                max_right = self.frame_idx + self.width_oc / 2 + margin_scene
-                current_right_x = min(current_right_x, max_right)
 
-                target_center_x = current_right_x - (view_width_scene / 2)
-            
-            min_x = target_center_x - (view_width_scene / 2)
-            max_x = target_center_x + (view_width_scene / 2)
-            
-            # 3. Identify indices to draw
-            half_width = self.width_oc / 2
-            start_i = int(math.ceil(min_x - half_width))
-            end_i = int(math.floor(max_x + half_width))
-            
-            # Clamp indices
-            start_i = max(0, start_i)
-            end_i = min(len(self.data) - 1, end_i)
-            
-            # 4. Update the candles in the pool
-            self._update_visible_candles(start_i, end_i)
-            
-            # 5. Calculate Y range for these candles
-            # We can use the data directly for speed
-            start_data = max(0, start_i)
-            end_data = min(len(self.data) - 1, end_i)
-            
-            min_y = float('inf')
-            max_y = float('-inf')
-            found = False
-            
-            if start_data <= end_data:
-                # Extract sub-arrays
-                sub_lows = self.data.Low.values[start_data : end_data + 1]
-                sub_highs = self.data.High.values[start_data : end_data + 1]
-                
-                if len(sub_lows) > 0:
-                    min_y = np.min(sub_lows)
-                    max_y = np.max(sub_highs)
-                    found = True
-                
-                # Check current candle if in range
-                if self.frame_idx >= start_data and self.frame_idx <= end_data and self.current_candle_cache:
-                     c = self.current_candle_cache
-                     min_y = min(min_y, c.Low)
-                     max_y = max(max_y, c.High)
-            
-            # Always include the target candle if specified
-            if idx is not None:
-                 # If idx is outside the geometric range (shouldn't happen if we centered on it),
-                 # we might miss it in the array check.
-                 if idx == self.frame_idx and self.current_candle_cache:
-                     c = self.current_candle_cache
-                     min_y = min(min_y, c.Low)
-                     max_y = max(max_y, c.High)
-                     found = True
-                 elif 0 <= idx < len(self.data):
-                     min_y = min(min_y, self.data.Low.values[idx])
-                     max_y = max(max_y, self.data.High.values[idx])
-                     found = True
-                 
-            if found:
-                diff = max_y - min_y
-                if diff == 0: diff = 0.0001
-                
-                # Calculate scaling to fit data within viewport with pixel margins
-                viewport_h = self.viewport().height()
-                if viewport_h < 20: return
-                
-                # Reserve pixels for margin (top and bottom)
-                available_h = viewport_h - 2 * self.y_margin
-                if available_h <= 0: available_h = viewport_h
-                
-                target_sy = available_h / diff
-                
-                # Update Scene Rect to match the area we want to show.
-                # X: Full data range (0 to last candle + margin) to allow scrolling
-                # Y: Visible range (min_y to max_y) for correct vertical centering
-                scene_end_x = self.frame_idx + self.width_oc / 2 + margin_scene
-                scene_width = max(scene_end_x, max_x) 
-                self.setSceneRect(0, min_y, scene_width, max_y - min_y)
+        # 1. Calculate X-scale (sx) from bars_per_inch
+        dpi = self.logicalDpiX()
+        if dpi == 0: dpi = 96
+        
+        # scene units per pixel
+        sx = dpi / self.bars_per_inch
+        
+        # Calculate margin in scene units
+        margin_scene = self.x_margin / sx
+        
+        # 2. Determine visible X range in Scene Coordinates
+        viewport_rect = self.viewport().rect()
+        view_width_scene = viewport_rect.width() / sx
+        
 
-                # 4. Apply Transform
-                new_transform = QTransform()
-                new_transform.scale(sx, -abs(target_sy))
-                self.setTransform(new_transform)
-                
-                # 5. Restore Center
-                target_center_y = (min_y + max_y) / 2
-                self.centerOn(target_center_x, target_center_y)
-                
-                # Save state for resize anchoring
-                self.last_right_scene_x = target_center_x + (view_width_scene / 2)
-        finally:
+        max_x = self.frame_idx + self.width_oc / 2 + margin_scene   # Right edge of last candle + margin
+        if resize:
+            # Anchor to last max_x while resizing - preserve right edge
+            max_x = min(max_x, self.last_right_scene_x)
+        elif scroll:
+            # Anchor current right edge (last candle) while scrolling - preserve right edge
+            max_x = min(max_x, self.mapToScene(viewport_rect.width(), 0).x())
+
+        min_x = max_x - view_width_scene
+        target_center_x = (min_x + max_x) / 2
+        
+
+        # 3. Identify indices to draw
+        half_width = self.width_oc / 2
+        start_i = max(0, int(math.ceil( min_x - half_width)))
+        end_i   = min(   int(math.floor(max_x + half_width)), self.frame_idx)
+
+        if start_i > end_i:
+            print("ERROR: No candles to show in view.")
             self._updating_view = False
+            return
+        
+        # 4. Update the candles in the pool
+        self._update_visible_candles(start_i, end_i)
+        # 5. Update plots
+        self._update_visible_plots(start_i, end_i)
+        
+        # 6. Calculate Y range for these candles
+        # We can use the data directly for speed
+        min_y = float('inf')
+        max_y = float('-inf')
+        
+        # Extract sub-arrays
+        sub_lows = self.data.Low.values[start_i : end_i + 1]
+        sub_highs = self.data.High.values[start_i : end_i + 1]
+        
+        if len(sub_lows) > 0:
+            min_y = np.min(sub_lows)
+            max_y = np.max(sub_highs)
+        
+        # Check current candle if in range
+        if self.frame_idx == end_i and self.current_candle_cache:
+            c = self.current_candle_cache
+            min_y = min(min_y, c.Low)
+            max_y = max(max_y, c.High)
+                
+
+        diff = max_y - min_y
+        if diff == 0: diff = 0.0001
+        
+        # Calculate scaling to fit data within viewport with pixel margins
+        viewport_h = self.viewport().height()
+        if viewport_h < 20: return
+        
+        # Reserve pixels for margin (top and bottom)
+        available_h = viewport_h - 2 * self.y_margin
+        if available_h <= 0: available_h = viewport_h
+        
+        target_sy = available_h / diff
+        
+        # Update Scene Rect to match the area we want to show.
+        # X: Full data range (0 to last candle + margin) to allow scrolling
+        # Y: Visible range (min_y to max_y) for correct vertical centering
+        scene_end_x = self.frame_idx + self.width_oc / 2 + margin_scene
+        scene_width = max(scene_end_x, max_x) 
+        self.setSceneRect(0, min_y, scene_width, max_y - min_y)
+
+        # Apply Transform
+        new_transform = QTransform()
+        new_transform.scale(sx, -abs(target_sy))
+        self.setTransform(new_transform)
+        
+        # Restore Center
+        target_center_y = (min_y + max_y) / 2
+        self.centerOn(target_center_x, target_center_y)
+        
+        # Save state for resize anchoring
+        self.last_right_scene_x = max_x
+
+        self._updating_view = False
+        return
 
     def _update_visible_candles(self, start_i, end_i):
         # Map data indices to pool items linearly
@@ -522,16 +615,26 @@ class Visualization(QGraphicsView):
         # Update frame_size for next time
         self.frame_size = num_visible
 
+    def _update_visible_plots(self, start_i, end_i):
+        n = end_i - start_i + 1
+        time_val = self.data.Date[end_i]
+        
+        # x_values as numpy array of indices
+        x_vals = np.arange(start_i, end_i + 1)
+        
+        for plotter in self.plotters:
+            plotter.update_plots(x_vals, time_val, n)
+
     def _on_scroll(self):
         self.axis_overlay.update()
-        self._ensure_visible(None)
+        self._update_view(scroll=True)
 
     def resizeEvent(self, event):
         self.axis_overlay.resize(self.size())
         super().resizeEvent(event)
         # Re-calculate visibility and scaling when view size changes
         # Use the captured anchor to keep the rightmost candle visible
-        self._ensure_visible(idx=None, anchor_right_x=self.last_right_scene_x)
+        self._update_view(resize=True)
 
     def add_plot(self, data_source, vis_params, **kwargs):
         params = self._vis_params_to_plot_params(vis_params)
@@ -570,7 +673,7 @@ class Visualization(QGraphicsView):
             # Clamp
             self.bars_per_inch = max(1.0, min(self.bars_per_inch, 100.0))
             
-            self._ensure_visible(None)
+            self._update_view(scroll=True)
             
         elif event.modifiers() & Qt.ShiftModifier:
              # Zoom Y
@@ -582,6 +685,5 @@ class Visualization(QGraphicsView):
             hbar.setValue(hbar.value() - delta)
 
     def set_init_frame(self, data_frame):
-        # Called by simulator to set initial state
-        self.frame_idx = data_frame.core_data_idx
-        # self.update_frame(None, data_frame) # Don't draw yet?
+        self.update_frame(None, data_frame) # Update intial frame
+

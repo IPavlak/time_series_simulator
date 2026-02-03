@@ -20,7 +20,7 @@ class BalanceWidget(QtWidgets.QWidget):
         self.init_time = frame_data.time
         self.data_idx = frame_data.core_data_idx
         self.start_idx = frame_data.core_data_idx
-
+        self.update_data(frame_data)
 
     def update_data(self, frame_data):
         self.data_idx = frame_data.core_data_idx

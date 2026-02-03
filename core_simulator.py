@@ -116,7 +116,6 @@ class Simulator:
 
                 self.indicator_handler.set_init_frame(self.frame_data.core_data_idx)
                 self.trader_handler.set_init_frame(self.frame_data.core_data_idx)
-                self.comm.init_frame_signal.emit(deepcopy(self.frame_data))
                 self._draw_init_frame()
                     
 
@@ -142,6 +141,7 @@ class Simulator:
         ind = self.indicator_handler.add_indicator(indicator_name, indicator, indicator_parameters)
         self.vis.add_plot(ind, ind.parameters.visualization)
         # self.comm.add_plot_signal.emit(ind, ind.parameters.visualization)
+        self._draw_init_frame() # draw indicator initial frame
     
     def add_trader(self, trader_name: str, trader: str, trader_parameters={}):
         trader = self.trader_handler.add_trader(trader_name, trader, trader_parameters)
@@ -245,6 +245,4 @@ class Simulator:
         frame_data.curr_candle = None
         frame_data.reset = True
 
-        self.frame_vis_event.wait()
-        self.frame_vis_event.clear()
-        self.comm.update_vis_signal.emit(self.frame_vis_event, deepcopy(frame_data))
+        self.comm.init_frame_signal.emit(deepcopy(self.frame_data))
